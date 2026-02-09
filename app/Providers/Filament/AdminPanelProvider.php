@@ -1,0 +1,129 @@
+<?php
+
+namespace App\Providers\Filament;
+
+use App\Filament\Widgets\AktivitasTerakhirUPT;
+use App\Filament\Widgets\CapaianBidangOverview;
+use App\Filament\Widgets\CapaianTargetPerUPT;
+use App\Filament\Widgets\DalamAngkaButton;
+use App\Filament\Widgets\ProduksiBulananChart;
+use App\Filament\Widgets\ProduksiKomoditasBidang;
+use App\Filament\Widgets\ProduksiPerKomoditasChart;
+use App\Filament\Widgets\RealisasiPerUptChart;
+use App\Filament\Widgets\RingkasanBidangOverview;
+use App\Filament\Widgets\StatProduksiBidang;
+use App\Filament\Widgets\StatProduksiUPT;
+use App\Filament\Widgets\StatStatusUPT;
+use App\Filament\Widgets\StatTotalData;
+use App\Filament\Widgets\StatUPTPerluPerhatian;
+use App\Filament\Widgets\TargetRealisasiBidangTable;
+use App\Filament\Widgets\TargetRealisasiOverview;
+use App\Filament\Widgets\TargetVsRealisasiTable;
+use App\Filament\Widgets\TopUPTBidang;
+use App\Filament\Widgets\UptRecentDataTeknis;
+use App\Filament\Widgets\UptStatOverview;
+use Filament\Http\Middleware\Authenticate;
+use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
+use Filament\Http\Middleware\AuthenticateSession;
+use Filament\Http\Middleware\DisableBladeIconComponents;
+use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Pages\Dashboard;
+use Filament\Panel;
+use Filament\PanelProvider;
+use Filament\Support\Colors\Color;
+use Filament\Widgets\AccountWidget;
+use Filament\Widgets\FilamentInfoWidget;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
+
+class AdminPanelProvider extends PanelProvider
+{
+    public function panel(Panel $panel): Panel
+    {
+        return $panel
+            ->default()
+            ->id('admin')
+            ->path('admin')
+            ->homeUrl(fn() => \App\Filament\Pages\Dashboard::getUrl())
+
+            ->login()
+            ->colors([
+                'primary' => Color::Amber,
+            ])
+            // ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
+
+            ->discoverResources(
+                in: app_path('Filament/Resources'),
+                for: 'App\\Filament\\Resources'
+            )
+            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
+
+            ->discoverPages(
+                in: app_path('Filament/Pages'),
+                for: 'App\\Filament\\Pages'
+            )
+            ->pages([
+                \App\Filament\Pages\Dashboard::class,
+                Dashboard::class,
+
+                // \App\Filament\Widgets\RealisasiPerUptChart::class,
+            ])
+
+            // ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
+
+
+            //masukan semua widget yang akan tampil di dashboard
+            ->widgets([
+                // AccountWidget::class,
+                // FilamentInfoWidget::class,
+                DalamAngkaButton::class,
+                StatTotalData::class,
+                CapaianBidangOverview::class,
+                AktivitasTerakhirUPT::class,
+                CapaianTargetPerUPT::class,
+                // RingkasanBidangOverview::class,
+                TargetRealisasiBidangTable::class,
+                UptStatOverview::class,
+                UptRecentDataTeknis::class,
+
+                // ProduksiBulananChart::class,
+                // ProduksiPerKomoditasChart::class,
+                StatProduksiBidang::class,
+                // StatProduksiUPT::class,
+                StatStatusUPT::class,
+                // TopUPTBidang::class,
+                StatUPTPerluPerhatian::class,
+
+                ProduksiKomoditasBidang::class,
+                RealisasiPerUptChart::class,
+                TargetVsRealisasiTable::class,
+                TargetRealisasiOverview::class,
+
+            ])
+
+            ->middleware([
+                EncryptCookies::class,
+                AddQueuedCookiesToResponse::class,
+                StartSession::class,
+                AuthenticateSession::class,
+                ShareErrorsFromSession::class,
+                VerifyCsrfToken::class,
+                SubstituteBindings::class,
+                DisableBladeIconComponents::class,
+                DispatchServingFilamentEvent::class,
+
+            ])
+            ->plugins([
+                FilamentShieldPlugin::make(),
+            ])
+            ->authMiddleware([
+                Authenticate::class,
+
+
+            ]);
+    }
+}
