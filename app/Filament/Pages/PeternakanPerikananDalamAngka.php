@@ -183,13 +183,32 @@ class PeternakanPerikananDalamAngka extends Page
          * =====================================================
          */
         $this->produksiBulanan = DataTeknis::query()
-            ->selectRaw('MONTH(tanggal) as bulan, SUM(nilai) as total')
-            ->whereYear('tanggal', $this->tahun)
-            ->whereIn('kegiatan_id', $this->kegiatanProduksi)
-            ->groupByRaw('MONTH(tanggal)')
-            ->orderByRaw('MONTH(tanggal)')
-            ->pluck('total', 'bulan')
+            ->whereYear('data_teknis.tanggal', $this->tahun)
+            ->whereIn('data_teknis.kegiatan_id', $this->kegiatanProduksi)
+            ->join('objek_produksis','data_teknis.objek_produksi_id','=','objek_produksis.id')
+            ->join('komoditas','objek_produksis.komoditas_id','=','komoditas.id')
+            ->selectRaw('
+                komoditas.nama as komoditas,
+                MONTH(data_teknis.tanggal) as bulan,
+                SUM(data_teknis.nilai) as total
+            ')
+            ->groupBy('komoditas.nama','bulan')
+            ->get()
+            ->groupBy('komoditas')
+            ->map(function($items){
+
+                $bulan = array_fill(0,12,0);
+
+                foreach($items as $row){
+                    $bulan[$row->bulan - 1] = (float)$row->total;
+                }
+
+                return array_values($bulan);
+            })
             ->toArray();
+
+
+        
 
         /**
          * =====================================================

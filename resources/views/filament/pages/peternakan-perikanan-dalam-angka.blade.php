@@ -84,38 +84,26 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
             <x-filament::card class="bg-primary-50">
-
-            <div class="text-sm text-gray-500">
-                    Produksi
-                </div>
+                <div class="text-sm text-gray-500">Produksi</div>
                 <div class="space-y-1 text-sm">
-
                     @forelse($this->produksiTahunIni as $item)
                         <div class="flex justify-between">
-
-                            <span>
-                                {{ $item['nama'] }}
-                            </span>
-
+                            <span>{{ $item['nama'] }}</span>
                             <span class="font-semibold">
                                 {{ number_format($item['total']) }}
                                 {{ $item['satuan_default'] }}
                             </span>
-
                         </div>
                     @empty
                         <div class="text-gray-400">
                             Belum ada data produksi
                         </div>
                     @endforelse
-
                 </div>
             </x-filament::card>
 
             <x-filament::card>
-                <div class="text-sm text-gray-500">
-                    Populasi (Indikatif)
-                </div>
+                <div class="text-sm text-gray-500">Populasi (Indikatif)</div>
                 <div class="text-3xl font-bold mt-1">
                     {{ number_format($totalPopulasi) }}
                 </div>
@@ -125,9 +113,7 @@
             </x-filament::card>
 
             <x-filament::card>
-                <div class="text-sm text-gray-500">
-                    Cakupan Pelaporan
-                </div>
+                <div class="text-sm text-gray-500">Cakupan Pelaporan</div>
                 <div class="text-3xl font-bold mt-1">
                     {{ number_format($cakupanPelaporan, 1) }}%
                 </div>
@@ -142,9 +128,7 @@
             E. TREN & NARASI DATA
         ========================================================= --}}
         <x-filament::card>
-            <h3 class="text-sm font-semibold">
-                Analisis Tren Produksi
-            </h3>
+            <h3 class="text-sm font-semibold">Analisis Tren Produksi</h3>
 
             <div class="mt-3 space-y-2 text-sm text-gray-600">
                 <p>
@@ -166,7 +150,7 @@
         </x-filament::card>
 
         {{-- =========================================================
-            E1. GRAFIK TREN PRODUKSI BULANAN (INTERAKTIF)
+            E1. GRAFIK TREN PRODUKSI BULANAN
         ========================================================= --}}
         <x-filament::card>
             <h3 class="text-sm font-semibold mb-3">
@@ -176,10 +160,15 @@
             <div class="h-80">
                 <canvas id="chartProduksiBulanan" wire:ignore></canvas>
             </div>
+
+            <p class="text-xs text-gray-400 mt-2">
+                Grafik merupakan indeks agregasi berbagai komoditas produksi.
+                Tidak dimaksudkan sebagai perbandingan satuan produksi.
+            </p>
         </x-filament::card>
 
         {{-- =========================================================
-            F. RINGKASAN PER URUSAN / BIDANG
+            F. RINGKASAN PER BIDANG
         ========================================================= --}}
         <x-filament::card>
             <h3 class="text-sm font-semibold mb-3">
@@ -203,63 +192,41 @@
         </x-filament::card>
 
         {{-- =========================================================
-            G. ATENSI & RISIKO
+            E2. KOMPOSISI PRODUKSI PER BIDANG
         ========================================================= --}}
-        <x-filament::card class="bg-red-50">
-            <h3 class="text-sm font-semibold text-red-700">
-                Poin Perlu Perhatian
+        <x-filament::card>
+            <h3 class="text-sm font-semibold mb-3">
+                Komposisi Produksi per Bidang
             </h3>
 
-            <ul class="text-sm text-red-600 mt-2 space-y-1">
-                <li>• Tidak semua UPT aktif melakukan input data.</li>
-                <li>• Diperlukan evaluasi dan penguatan koordinasi.</li>
-            </ul>
+            <p class="text-xs text-gray-500 mb-2">
+                Visual kontribusi masing-masing bidang terhadap total produksi tahun {{ $tahun }}.
+            </p>
+
+            <div class="h-80">
+                <canvas id="chartProduksiBidang" wire:ignore></canvas>
+            </div>
         </x-filament::card>
-
-        {{-- =========================================================
-            H. ARAH LANJUTAN (CALL TO ACTION)
-        ========================================================= --}}
-        <div class="flex justify-end gap-3 pt-4">
-            <a
-                href="{{ url('/admin/data-teknis') }}"
-                class="inline-flex items-center px-4 py-2 text-sm font-medium
-                       text-white bg-primary-600 rounded-lg hover:bg-primary-700"
-            >
-                Lihat Data Teknis
-            </a>
-        </div>
-
-
-
-
-        {{-- =========================================================
-    E2. KOMPOSISI PRODUKSI PER BIDANG
-========================================================= --}}
-            <x-filament::card>
-                <h3 class="text-sm font-semibold mb-3">
-                    Komposisi Produksi per Bidang
-                </h3>
-
-                <p class="text-xs text-gray-500 mb-2">
-                    Visual kontribusi masing-masing bidang terhadap total produksi tahun {{ $tahun }}.
-                </p>
-
-                <div class="h-80">
-                    <canvas id="chartProduksiBidang" wire:ignore></canvas>
-                </div>
-            </x-filament::card>
-
 
     </div>
 
     @push('scripts')
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    {{-- ===================== CHART BULANAN ===================== --}}
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const dataBulanan = @json($produksiBulanan);
+
+            const datasetsRaw = @json($produksiBulanan);
 
             const labels = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-            const values = labels.map((_, i) => dataBulanan[i + 1] ?? 0);
+
+            const datasets = Object.entries(datasetsRaw).map(([label, values]) => ({
+                label: label + ' (Indeks)', // ⭐ tambahan label aman
+                data: values,
+                borderWidth: 2,
+                tension: 0.3,
+            }));
 
             new Chart(
                 document.getElementById('chartProduksiBulanan'),
@@ -267,15 +234,14 @@
                     type: 'line',
                     data: {
                         labels,
-                        datasets: [{
-                            label: 'Produksi',
-                            data: values,
-                            borderWidth: 2,
-                            tension: 0.3,
-                        }]
+                        datasets
                     },
                     options: {
                         responsive: true,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
                         scales: {
                             y: { beginAtZero: true }
                         }
@@ -285,45 +251,73 @@
         });
     </script>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const dataBidang = @json($produksiPerBidang);
+    {{-- ===================== CHART BIDANG ===================== --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
 
-    const labels = Object.keys(dataBidang);
-    const values = Object.values(dataBidang);
+            const dataBidang = @json($produksiPerBidang);
 
-    new Chart(
-        document.getElementById('chartProduksiBidang'),
-        {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Total Produksi',
-                    data: values,
-                    borderWidth: 1,
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: (ctx) =>
-                                ctx.parsed.y.toLocaleString()
+            const labels = Object.keys(dataBidang);
+            const values = Object.values(dataBidang);
+
+            new Chart(
+                document.getElementById('chartProduksiBidang'),
+                {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Produksi Bidang (Indeks Agregasi)',
+                            data: values,
+                            borderWidth: 1,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => {
+                                        return 'Indeks Produksi: ' +
+                                            ctx.parsed.y.toLocaleString();
+                                    }
+                                }
+                            },
+
+                            legend: {
+                                labels: {
+                                    font: {
+                                        size: 12
+                                    }
+                                }
+                            }
+                        },
+
+                        scales: {
+                            x: {
+                                stacked: false
+                            },
+                            y: {
+                                stacked: false,
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return value.toLocaleString();
+                                    }
+                                }
+                            }
                         }
                     }
-                },
-                scales: {
-                    x: { stacked: true },
-                    y: { stacked: true, beginAtZero: true }
                 }
-            }
-        }
-    );
-});
-</script>
-
+            );
+        });
+    </script>
 
     @endpush
 

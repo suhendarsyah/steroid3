@@ -4,27 +4,25 @@ namespace App\Filament\Widgets;
 
 use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
-
 use App\Models\DataTeknis;
 
 class ChartTrenProduksiBulanan extends ChartWidget
 {
     use InteractsWithPageFilters;
 
-    public function getColumnSpan(): int|string|array
-    {
-        return 'full';
-    }
-
-
-    public function getHeading(): ?string
-    {
-        return 'Tren Produksi Bulanan';
-    }
-
     protected function getType(): string
     {
         return 'line';
+    }
+
+    public function getHeading(): ?string
+    {
+        return 'Tren Produksi Bulanan per Komoditas';
+    }
+
+    public function getColumnSpan(): int|string|array
+    {
+        return 'full';
     }
 
     protected function getData(): array
@@ -38,7 +36,7 @@ class ChartTrenProduksiBulanan extends ChartWidget
         $uptId     = $filters['upt_id'] ?? null;
 
         /**
-         * 🔥 AUTO ROLE SCOPE
+         * 🔥 AUTO ROLE SCOPE (tidak merusak struktur sistem)
          */
         if ($user?->hasRole('kepala_bidang')) {
             $bidangId = $user->bidang_id ?? $bidangId;
@@ -48,40 +46,105 @@ class ChartTrenProduksiBulanan extends ChartWidget
             $uptId = $user->upt_id ?? $uptId;
         }
 
-        $query = DataTeknis::query();
+        $query = DataTeknis::query()
+            ->with('objekProduksi.komoditas');
 
         if ($startDate) {
-            $query->whereDate('tanggal','>=',$startDate);
+            $query->whereDate('tanggal', '>=', $startDate);
         }
 
         if ($endDate) {
-            $query->whereDate('tanggal','<=',$endDate);
+            $query->whereDate('tanggal', '<=', $endDate);
         }
 
         if ($bidangId) {
-            $query->whereHas('upt', fn($q)=>$q->where('bidang_id',$bidangId));
+            $query->whereHas('objekProduksi.upt', fn ($q) =>
+                $q->where('bidang_id', $bidangId)
+            );
         }
 
         if ($uptId) {
-            $query->where('upt_id',$uptId);
+            $query->whereHas('objekProduksi', fn ($q) =>
+                $q->where('upt_id', $uptId)
+            );
         }
 
+        $rows = $query->get();
+
         /**
-         * 🟪 SAFE MODE
-         * group bulanan di PHP
+         * =============================
+         * 🟢 GROUPING PER KOMODITAS
+         * =============================
          */
-        $data = $query->get()
-            ->groupBy(fn($row)=>date('Y-m', strtotime($row->tanggal)))
-            ->map(fn($items)=>$items->sum('jumlah_produksi'));
+        $grouped = $rows->groupBy(fn ($row) =>
+            $row->objekProduksi?->komoditas?->nama ?? 'Tanpa Komoditas'
+        );
+
+        $labels = collect(range(1, 12))
+            ->map(fn ($m) => date('M', mktime(0,0,0,$m,1)))
+            ->toArray();
+
+        $datasets = [];
+
+        $colors = [
+            '#3b82f6','#ef4444','#10b981','#f59e0b',
+            '#8b5cf6','#06b6d4','#ec4899','#84cc16'
+        ];
+
+        $i = 0;
+
+        foreach ($grouped as $komoditas => $items) {
+
+            $bulanan = collect(range(1,12))->map(function ($bulan) use ($items) {
+
+                return $items
+                    ->filter(fn ($r) => date('n', strtotime($r->tanggal)) == $bulan)
+                    ->sum('nilai'); // 🔥 pakai field nilai
+            });
+
+            $datasets[] = [
+                'label' => $komoditas,
+                'data' => $bulanan->values(),
+                'borderColor' => $colors[$i % count($colors)],
+                'backgroundColor' => $colors[$i % count($colors)],
+                'tension' => 0.4,
+                'pointRadius' => 3,
+                'borderWidth' => 2,
+            ];
+
+            $i++;
+        }
 
         return [
-            'datasets' => [
-                [
-                    'label' => 'Produksi',
-                    'data' => $data->values(),
+            'labels' => $labels,
+            'datasets' => $datasets,
+        ];
+    }
+
+    /**
+     * 🎨 UPGRADE STYLE CHART
+     */
+    protected function getOptions(): array
+    {
+        return [
+            'responsive' => true,
+            'interaction' => [
+                'mode' => 'index',
+                'intersect' => false,
+            ],
+            'plugins' => [
+                'legend' => [
+                    'position' => 'bottom',
+                    'labels' => [
+                        'usePointStyle' => true,
+                    ],
                 ],
             ],
-            'labels' => $data->keys()->toArray(),
+            'scales' => [
+                'y' => [
+                    'beginAtZero' => true,
+                ],
+            ],
         ];
     }
 }
