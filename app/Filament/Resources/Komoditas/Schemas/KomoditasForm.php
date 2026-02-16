@@ -5,6 +5,8 @@ namespace App\Filament\Resources\Komoditas\Schemas;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
+use App\Models\Bidang;
+use Filament\Forms\Components\Select;
 
 class KomoditasForm
 {
@@ -12,11 +14,15 @@ class KomoditasForm
     {
         return $schema
             ->components([
-                TextInput::make('master_bidang_id')
-                    ->required()
-                    ->numeric(),
-                TextInput::make('kode')
+                Select::make('master_bidang_id')
+                    ->label('Bidang')
+                    ->relationship('bidang','nama')
+                    ->searchable()
+                    ->preload()
                     ->required(),
+                TextInput::make('kode')
+                    // ->required()
+                     ->rules(['nullable','string','max:50']),
                 TextInput::make('nama')
                     ->required(),
                 TextInput::make('satuan_default')

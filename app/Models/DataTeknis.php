@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Models\Upt;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
+
 
 
 class DataTeknis extends Model
@@ -37,10 +39,16 @@ class DataTeknis extends Model
         return $this->belongsTo(Upt::class);
     }
 
+    public function komoditas()
+{
+    return $this->belongsTo(Komoditas::class, 'komoditas_id');
+}
+
 // ===== SCOPES (BEST PRACTICE) =====
     public function scopeForUpt(Builder $query, int $uptId): Builder
     {
         return $query->where('upt_id', $uptId);
     }
+
     
 }

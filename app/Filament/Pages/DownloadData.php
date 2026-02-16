@@ -19,10 +19,7 @@ class DownloadData extends Page implements HasForms
      ===================================================== */
     protected static ?string $slug = 'download-data';
 
-    public function getView(): string
-    {
-        return 'filament.pages.download-data';
-    }
+    protected string $view = 'filament.pages.download-data';
 
     /* =====================================================
      | NAVIGASI
@@ -43,15 +40,22 @@ class DownloadData extends Page implements HasForms
     }
 
     public static function canView(): bool
-    {
-        return Auth::user()?->hasAnyRole([
-            'super_admin',
-            'kepala_dinas',
-            'perencanaan',
-            'kepala_bidang',
-            'upt',
-        ]) ?? false;
-    }
+        {
+            return auth()->user()?->hasAnyRole([
+                'super_admin',
+                'kepala_bidang',
+                'upt',
+            ]) ?? false;
+        }
+
+    public static function shouldRegisterNavigation(): bool
+        {
+            return auth()->user()?->hasAnyRole([
+                'super_admin',
+                'kepala_bidang',
+                'upt',
+            ]) ?? false;
+        }
 
     /* =====================================================
      | FORM STATE
@@ -71,22 +75,14 @@ class DownloadData extends Page implements HasForms
         return [
             Select::make('jenis_data')
                 ->label('Jenis Data')
-                // ->options([
-                //     'data_teknis_mentah'     => 'Data Teknis Mentah',
-                //     'produksi_upt'           => 'Produksi per UPT',
-                //     'produksi_unit_layanan'  => 'Produksi per Unit Layanan',
-                //     'target_vs_realisasi'    => 'Target vs Realisasi',
-                //     'produksi_kecamatan'     => 'Produksi per Kecamatan (Format BPS)',
-                //     'populasi_ternak'        => 'Populasi Ternak per Wilayah',
-                // ])
-                ->options(fn() => $this->getJenisDataOptions())
+                ->options(fn () => $this->getJenisDataOptions())
                 ->required(),
 
             Select::make('tahun')
                 ->label('Tahun')
                 ->options(
                     collect(range(now()->year - 5, now()->year))
-                        ->mapWithKeys(fn($y) => [$y => $y])
+                        ->mapWithKeys(fn ($y) => [$y => $y])
                         ->toArray()
                 )
                 ->default(now()->year)
@@ -95,7 +91,7 @@ class DownloadData extends Page implements HasForms
     }
 
     /* =====================================================
-     | FORM ACTIONS (INI KUNCI 404)
+     | FORM ACTIONS
      ===================================================== */
     protected function getFormActions(): array
     {
@@ -104,7 +100,7 @@ class DownloadData extends Page implements HasForms
                 ->label('Download Excel')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('primary')
-                ->action(fn() => $this->download()), // ⬅️ PENTING
+                ->action(fn () => $this->download()),
         ];
     }
 
@@ -121,9 +117,16 @@ class DownloadData extends Page implements HasForms
         );
     }
 
+    /* =====================================================
+     | OPSI JENIS DATA PER ROLE
+     ===================================================== */
     protected function getJenisDataOptions(): array
     {
         $user = auth()->user();
+
+        if (! $user) {
+            return [];
+        }
 
         // OPSI DASAR (SEMUA ROLE)
         $options = [
@@ -139,7 +142,7 @@ class DownloadData extends Page implements HasForms
             $options['target_vs_realisasi']   = 'Target vs Realisasi';
         }
 
-        // KEPALA BIDANG (TANPA BPS KECAMATAN)
+        // KEPALA BIDANG
         if ($user->hasRole('kepala_bidang')) {
             $options['produksi_unit_layanan'] = 'Produksi per Unit Layanan';
             $options['target_vs_realisasi']   = 'Target vs Realisasi';
@@ -148,17 +151,20 @@ class DownloadData extends Page implements HasForms
         return $options;
     }
 
+    /* =====================================================
+     | FOOTER
+     ===================================================== */
     protected function getFormFooter(): ?string
     {
         return <<<HTML
-    <div class="text-sm text-gray-500">
-        <p><strong>Catatan:</strong></p>
-        <ul class="list-disc pl-5">
-            <li><strong>Populasi ternak</strong> = jumlah ekor (stok), bukan produksi.</li>
-            <li><strong>Produksi</strong> berasal dari data teknis kegiatan.</li>
-            <li>Beberapa jenis data hanya tersedia untuk role tertentu.</li>
-        </ul>
-    </div>
-    HTML;
+<div class="text-sm text-gray-500">
+    <p><strong>Catatan:</strong></p>
+    <ul class="list-disc pl-5">
+        <li><strong>Populasi ternak</strong> = jumlah ekor (stok).</li>
+        <li><strong>Produksi</strong> berasal dari data teknis kegiatan.</li>
+        <li>Beberapa jenis data hanya tersedia untuk role tertentu.</li>
+    </ul>
+</div>
+HTML;
     }
 }

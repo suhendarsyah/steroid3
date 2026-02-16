@@ -53,11 +53,11 @@ class PemilikResource extends Resource
 
 public static function canViewAny(): bool
 {
-    return auth()->user()->hasAnyRole([
+    return auth()->user()?->hasAnyRole([
         'kepala_dinas',
         // 'perencanaan',
         'super_admin',
-    ]);
+    ]) ?? false;
 }
 
 }

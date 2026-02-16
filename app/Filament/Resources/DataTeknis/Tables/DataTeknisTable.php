@@ -9,6 +9,9 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Illuminate\Database\Eloquent\Builder;
+
+
 
 class DataTeknisTable
 {
@@ -16,15 +19,16 @@ class DataTeknisTable
     {
         return $table
             ->columns([
-                TextColumn::make('objek_produksi_id')
-                    ->numeric()
+                TextColumn::make('objekProduksi.nama')
+                    ->label('Unit Usaha')
+                    
                     ->sortable(),
                 TextColumn::make('objekProduksi.unitLayanan.nama')
                     ->label('Unit Layanan')
                     ->placeholder('-')
                     ->toggleable(),
-                TextColumn::make('kegiatan_id')
-                    ->numeric()
+                TextColumn::make('kegiatan.nama')
+                    
                     ->sortable(),
                 TextColumn::make('tanggal')
                     ->date()
@@ -41,48 +45,46 @@ class DataTeknisTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            // ->filters([
-            //     SelectFilter::make('unit_layanan_id')
-            //         ->label('Unit Layanan')
-            //         ->options(
-            //             UnitLayanan::query()->pluck('nama', 'id')->toArray()
-            //         )
-            //         ->query(function ($query, $value) {
-            //             $query->whereHas('objekProduksi', function ($q) use ($value) {
-            //                 $q->where('unit_layanan_id', $value);
-            //             });
-            //         }),
-            // ])
 
-            ->filters([
-                SelectFilter::make('unit_layanan_id')
-                    ->label('Unit Layanan')
-                    ->options(function () {
-                        $user = auth()->user();
+     
 
-                        // =========================
-                        // ROLE: UPT
-                        // =========================
-                        if ($user->hasRole('upt')) {
-                            return UnitLayanan::query()
-                                ->where('upt_id', $user->upt_id)
-                                ->pluck('nama', 'id')
-                                ->toArray();
-                        }
+           
 
-                        // =========================
-                        // ROLE LAIN (Kabid, Admin)
-                        // =========================
-                        return UnitLayanan::query()
-                            ->pluck('nama', 'id')
-                            ->toArray();
-                    })
-                    ->query(function ($query, $value) {
-                        $query->whereHas('objekProduksi', function ($q) use ($value) {
-                            $q->where('unit_layanan_id', $value);
-                        });
-                    }),
-            ])
+->filters([
+    SelectFilter::make('unit_layanan_id')
+        ->label('Unit Layanan')
+
+        ->options(function () {
+
+            $user = auth()->user();
+
+            if ($user->hasRole('upt')) {
+                return UnitLayanan::where('upt_id', $user->upt_id)
+                    ->pluck('nama','id')
+                    ->toArray();
+            }
+
+            return UnitLayanan::pluck('nama','id')->toArray();
+        })
+
+        ->query(function (Builder $query, array $data) {
+
+            $value = $data['value'] ?? null;
+
+            // ⭐ TANPA PILIHAN → JANGAN FILTER
+            if (!$value) {
+                return $query;
+            }
+
+            return $query->whereHas('objekProduksi', function ($q) use ($value) {
+                $q->where('unit_layanan_id', $value);
+            });
+        }),
+])
+
+
+
+
 
             ->recordActions([
                 EditAction::make()

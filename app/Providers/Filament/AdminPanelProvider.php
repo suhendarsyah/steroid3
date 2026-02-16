@@ -27,7 +27,7 @@ use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages\Dashboard;
+// use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -49,12 +49,14 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->homeUrl(fn() => \App\Filament\Pages\Dashboard::getUrl())
+            ->profile()   // 👤 menu user
+            
 
             ->login()
             ->colors([
                 'primary' => Color::Amber,
             ])
-            // ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
+            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
 
             ->discoverResources(
                 in: app_path('Filament/Resources'),
@@ -68,40 +70,19 @@ class AdminPanelProvider extends PanelProvider
             )
             ->pages([
                 \App\Filament\Pages\Dashboard::class,
-                Dashboard::class,
+                \App\Filament\Pages\DashboardKepalaBidang::class,
+            //    Dashboard::class,
 
-                // \App\Filament\Widgets\RealisasiPerUptChart::class,
             ])
 
-            // ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
+            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
 
 
             //masukan semua widget yang akan tampil di dashboard
             ->widgets([
-                // AccountWidget::class,
-                // FilamentInfoWidget::class,
-                DalamAngkaButton::class,
-                StatTotalData::class,
-                CapaianBidangOverview::class,
-                AktivitasTerakhirUPT::class,
-                CapaianTargetPerUPT::class,
-                // RingkasanBidangOverview::class,
-                TargetRealisasiBidangTable::class,
-                UptStatOverview::class,
-                UptRecentDataTeknis::class,
 
-                // ProduksiBulananChart::class,
-                // ProduksiPerKomoditasChart::class,
-                StatProduksiBidang::class,
-                // StatProduksiUPT::class,
-                StatStatusUPT::class,
-                // TopUPTBidang::class,
-                StatUPTPerluPerhatian::class,
+        
 
-                ProduksiKomoditasBidang::class,
-                RealisasiPerUptChart::class,
-                TargetVsRealisasiTable::class,
-                TargetRealisasiOverview::class,
 
             ])
 
@@ -116,14 +97,14 @@ class AdminPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
 
+           ])
+           ->plugins([
+              FilamentShieldPlugin::make(),
             ])
-            ->plugins([
-                FilamentShieldPlugin::make(),
-            ])
-            ->authMiddleware([
-                Authenticate::class,
+          ->authMiddleware([
+              Authenticate::class,
 
-
+              
             ]);
     }
 }

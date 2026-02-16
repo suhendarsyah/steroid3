@@ -7,6 +7,7 @@ use Filament\Tables\Columns\TextColumn;
 
 class ObjekProduksisTable
 {
+    
     public static function configure(Table $table): Table
     {
         return $table

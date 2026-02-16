@@ -20,4 +20,11 @@ class Upt extends Model
             return $this->hasMany(UnitLayanan::class);
         }
 
+
+    public function bidang()
+        {
+            return $this->belongsTo(\App\Models\Bidang::class, 'bidang_id');
+        }
+
+
 }

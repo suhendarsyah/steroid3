@@ -8,9 +8,7 @@ class MasterKegiatanTeknis extends Model
 {
     protected $table = 'master_kegiatan_teknis';
 
-    protected $fillable = [
-        'nama',
-    ];
+    protected $guarded = [];
 
     public function dataTeknis()
     {

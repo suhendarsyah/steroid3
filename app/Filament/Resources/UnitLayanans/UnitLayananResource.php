@@ -70,12 +70,12 @@ class UnitLayananResource extends Resource
     */
     public static function canViewAny(): bool
     {
-        return auth()->user()->hasAnyRole([
+        return auth()->user()?->hasAnyRole([
             'super_admin',
             // 'upt',
             'perencanaan',
             // tambahkan jika perlu: 'kepala_bidang', 'kepala_dinas'
-        ]);
+        ]) ?? false;
     }
 
     /*

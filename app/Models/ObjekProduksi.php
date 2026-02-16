@@ -13,6 +13,8 @@ class ObjekProduksi extends Model
     //     'jumlah',
     // ];
 
+
+
     protected $guarded = [];
 
     public function pemilik()

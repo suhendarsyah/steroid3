@@ -24,6 +24,7 @@ class User extends Authenticatable
         'password',
         'bidang_id',
         'upt_id',
+        'bidang_id'
     ];
 
     /**
@@ -53,6 +54,17 @@ class User extends Authenticatable
 {
     return $this->belongsTo(Upt::class);
 }
+
+public function bidang()
+{
+    return $this->belongsTo(Bidang::class);
+}
+
+public function canAccessPanel(): bool
+{
+    return $this->hasRole(['admin','super_admin']);
+}
+
 
 }
 

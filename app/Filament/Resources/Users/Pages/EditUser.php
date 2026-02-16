@@ -22,4 +22,10 @@ class EditUser extends EditRecord
         $this->record->syncRoles([$this->data['role_name']]);
     }
 
+    protected function mutateFormDataBeforeSave(array $data): array
+        {
+            return $data;
+        }
+
+
 }

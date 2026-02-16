@@ -15,9 +15,16 @@ class KomoditasTable
     {
         return $table
             ->columns([
-                TextColumn::make('master_bidang_id')
-                    ->numeric()
-                    ->sortable(),
+                // TextColumn::make('master_bidang_id')
+                //     ->numeric()
+                //     ->sortable(),
+                TextColumn::make('bidang.nama')
+                    ->label('Bidang')
+                    ->badge()
+                    ->color('primary')
+                    ->sortable()
+                    ->searchable(),
+
                 TextColumn::make('kode')
                     ->searchable(),
                 TextColumn::make('nama')

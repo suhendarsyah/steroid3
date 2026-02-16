@@ -18,6 +18,7 @@ use UnitEnum;
 class KomoditasResource extends Resource
 
 {
+    protected static ?string $navigationLabel = 'Jenis Usaha/ Komoditas';
     protected static string|UnitEnum|null $navigationGroup = 'Data Master';
     protected static ?string $model = Komoditas::class;
 
@@ -53,7 +54,7 @@ class KomoditasResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()->hasRole('super_admin');
+        return auth()->user()?->hasRole('super_admin')?? false;
     }
     
 }

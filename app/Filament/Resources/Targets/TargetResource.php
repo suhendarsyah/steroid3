@@ -104,24 +104,24 @@ class TargetResource extends Resource
     // 🔹 SIAPA BOLEH MELIHAT MENU
     public static function canViewAny(): bool
     {
-        return auth()->user()->hasAnyRole([
+        return auth()->user()?->hasAnyRole([
             'perencanaan',
             'kepala_dinas',
             'super_admin',
             'kepala_bidang',
-        ]);
+        ])?? false;
     }
 
     // 🔹 SIAPA BOLEH CREATE
     public static function canCreate(): bool
     {
-        return auth()->user()->hasRole('perencanaan');
+        return auth()->user()?->hasRole('perencanaan')?? false;
     }
 
     // 🔹 SIAPA BOLEH EDIT
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        return auth()->user()->hasRole('perencanaan');
+        return auth()->user()?->hasRole('perencanaan')?? false;
     }
 
     // 🔹 DELETE DIMATIKAN

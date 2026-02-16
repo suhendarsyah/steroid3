@@ -52,13 +52,23 @@ class UserForm
             | - Menentukan field Bidang / UPT muncul
             | - Disinkronkan ke Spatie Role saat simpan
             */
+            // Select::make('role_name')
+            //     ->label('Role')
+            //     ->options(
+            //         Role::query()->pluck('name', 'name')->toArray()
+            //     )
+            //     ->required()
+            //     ->reactive(),
+
             Select::make('role_name')
                 ->label('Role')
                 ->options(
                     Role::query()->pluck('name', 'name')->toArray()
                 )
                 ->required()
-                ->reactive(),
+                ->reactive()
+                ->dehydrated(false), // 🔥 PENTING
+
 
             /*
             |--------------------------------------------------------------------------
@@ -90,7 +100,8 @@ class UserForm
                 ->nullable()
                 ->visible(fn ($get) => $get('role_name') === 'upt')
                 ->required(fn ($get) => $get('role_name') === 'upt')
-                ->helperText('Wajib diisi untuk user UPT'),
+                ->helperText('Wajib diisi untuk user UPT')
+                ->dehydrated(true) ,
 
         ]);
     }

@@ -18,14 +18,16 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ObjekProduksiResource extends Resource
 {
+    // protected static string|UnitEnum|null $navigationGroup = 'Operasional UPT';
+    protected static ?string $modelLabel = 'Unit Usaha';
+    
+    protected static ?string $navigationLabel = 'Unit Usaha';
     protected static ?string $model = ObjekProduksi::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
     // Secara logika ini lebih cocok operasional
-    protected static string|UnitEnum|null $navigationGroup = 'Operasional UPT';
-
-    protected static ?string $navigationLabel = 'Objek Produksi';
+    
 
     protected static ?string $recordTitleAttribute = 'nama';
 
@@ -77,12 +79,12 @@ class ObjekProduksiResource extends Resource
     */
     public static function canViewAny(): bool
     {
-        return auth()->user()->hasAnyRole([
+        return auth()->user()?->hasAnyRole([
             'super_admin',
             'upt',
             'perencanaan',
             // tambahkan jika perlu: 'kepala_bidang', 'kepala_dinas'
-        ]);
+        ]) ?? false;
     }
 
     /*
@@ -105,4 +107,23 @@ class ObjekProduksiResource extends Resource
 
         return $data;
     }
+
+
+    public static function canCreate(): bool
+        {
+            // return !auth()->user()?->hasRole('super_admin');
+
+            $user = auth()->user();
+
+    if (!$user) {
+        return false;
+    }
+
+    // 🔥 SUPER ADMIN HANYA READ ONLY
+    if ($user->hasRole('super_admin')) {
+        return false;
+    }
+
+    return true;
+        }
 }

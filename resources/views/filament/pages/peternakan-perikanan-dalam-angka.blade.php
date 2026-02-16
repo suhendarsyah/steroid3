@@ -84,14 +84,31 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
             <x-filament::card class="bg-primary-50">
-                <div class="text-sm text-primary-700">
-                    Total Produksi
+
+            <div class="text-sm text-gray-500">
+                    Produksi
                 </div>
-                <div class="text-3xl font-bold text-primary-800 mt-1">
-                    {{ number_format($totalProduksi) }}
-                </div>
-                <div class="text-xs text-primary-600">
-                    Akumulasi produksi tahun {{ $tahun }}
+                <div class="space-y-1 text-sm">
+
+                    @forelse($this->produksiTahunIni as $item)
+                        <div class="flex justify-between">
+
+                            <span>
+                                {{ $item['nama'] }}
+                            </span>
+
+                            <span class="font-semibold">
+                                {{ number_format($item['total']) }}
+                                {{ $item['satuan_default'] }}
+                            </span>
+
+                        </div>
+                    @empty
+                        <div class="text-gray-400">
+                            Belum ada data produksi
+                        </div>
+                    @endforelse
+
                 </div>
             </x-filament::card>
 

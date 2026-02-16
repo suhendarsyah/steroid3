@@ -5,7 +5,7 @@ use App\Exports\ProduksiPerUptExport;
 use App\Services\DownloadDataService;
 
 Route::get('/', function () {
-    return view('welcome');
+    return view('welcome2');
 });
 
 // Route::get('/cek-upt-user', function () {

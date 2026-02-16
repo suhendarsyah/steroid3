@@ -30,9 +30,14 @@ class ObjekProduksiForm
                 |--------------------------------------------------------------------------
                 */
                 TextInput::make('nama')
-                    ->label('Nama Objek Produksi')
+                    ->label('Nama Unit Usaha')
                     ->placeholder('Contoh: Produksi Daging Sapi')
                     ->required(),
+                // Select::make('objek_produksi_id')
+                //     ->label('Unit Usaha')
+                //     ->relationship('objekProduksi', 'nama')
+                //     ->searchable()
+                //     ->preload(),
 
                 /*
                 |--------------------------------------------------------------------------
@@ -48,6 +53,7 @@ class ObjekProduksiForm
                             ->toArray()
                     )
                     ->searchable()
+                    ->preload()
                     ->nullable()
                     ->helperText('Kosongkan jika UPT Wilayah'),
 
@@ -61,7 +67,8 @@ class ObjekProduksiForm
                     ->relationship('pemilik', 'nama')
                     ->searchable()
                     ->preload()
-                    ->required(),
+                    ->required()
+                    ->live(),
 
                 /*
                 |--------------------------------------------------------------------------
@@ -70,10 +77,38 @@ class ObjekProduksiForm
                 */
                 Select::make('komoditas_id')
                     ->label('Komoditas')
-                    ->relationship('komoditas', 'nama')
+                    ->relationship(
+                            name: 'komoditas',
+                            titleAttribute: 'nama',
+                            modifyQueryUsing: function ($query, callable $get) {
+
+                                $pemilikId = $get('pemilik_id');
+
+                                if ($pemilikId) {
+
+                                    $query->where(function ($q) use ($pemilikId) {
+
+                                        $q->whereIn('id', function ($sub) use ($pemilikId) {
+                                            $sub->select('komoditas_id')
+                                                ->from('objek_produksis')
+                                                ->where('pemilik_id', $pemilikId);
+                                        })
+                                        ->orWhereNotExists(function ($sub) use ($pemilikId) {
+                                            $sub->selectRaw(1)
+                                                ->from('objek_produksis')
+                                                ->where('pemilik_id', $pemilikId);
+                                        });
+
+                                    });
+                                }
+                            }
+                        )
+
                     ->searchable()
                     ->preload()
-                    ->required(),
+                    ->required()
+                    ->live(),
+
 
                 /*
                 |--------------------------------------------------------------------------
@@ -88,7 +123,76 @@ class ObjekProduksiForm
                     ->label('Jumlah')
                     ->numeric()
                     ->default(1)
-                    ->required(),
+                    ->required()
+                    ->live() // ⭐ supaya update saat komoditas berubah
+
+                    /**
+                     * 🔵 STEP OTOMATIS
+                     * individu = 1
+                     * produksi = 0.01
+                     */
+                    ->step(function (callable $get) {
+
+                        $komoditasId = $get('komoditas_id');
+
+                        if (!$komoditasId) return 0.01;
+
+                        $komoditas = \App\Models\Komoditas::find($komoditasId);
+
+                        if ($komoditas?->is_individual) {
+                            return 1;
+                        }
+
+                        return 0.01;
+                    })
+
+                    /**
+                     * 🔵 VALIDASI DINAMIS
+                     */
+                    ->rule(function (callable $get) {
+
+                        $komoditasId = $get('komoditas_id');
+
+                        if (!$komoditasId) return 'numeric';
+
+                        $komoditas = \App\Models\Komoditas::find($komoditasId);
+
+                        if ($komoditas?->is_individual) {
+                            return 'integer';
+                        }
+
+                        return 'numeric';
+                    })
+
+                    /**
+                     * 🔵 SUFFIX SATUAN OTOMATIS
+                     */
+                    ->suffix(function (callable $get) {
+
+                        $komoditasId = $get('komoditas_id');
+
+                        if (!$komoditasId) return null;
+
+                        return \App\Models\Komoditas::find($komoditasId)?->satuan_default;
+                    })
+
+                    /**
+                     * 🔵 HINT BIAR USER PAHAM
+                     */
+                    ->hint(function (callable $get) {
+
+                        $komoditasId = $get('komoditas_id');
+
+                        if (!$komoditasId) return null;
+
+                        $komoditas = \App\Models\Komoditas::find($komoditasId);
+
+                        return $komoditas?->is_individual
+                            ? 'Jumlah individu (harus bilangan bulat)'
+                            : 'Jumlah produksi sesuai satuan komoditas';
+                    }),
+
+
 
                 TextInput::make('populasi_awal')
                     ->label('Populasi Awal (ekor)')

@@ -26,7 +26,7 @@ class PusatDataTeknis extends Page implements HasTable
         // =========================
     // PANEL PELAKU USAHA (BY NAME)
     // =========================
-    public array $pelakuUsaha = [];
+    // public array $pelakuUsaha = [];
     public int $totalPelaku = 0;
     public int $totalUnitUsaha = 0;
     public int $totalLaporan = 0;
@@ -50,7 +50,7 @@ class PusatDataTeknis extends Page implements HasTable
         return auth()->user()?->hasAnyRole([
             'kepala_dinas',
             'super_admin',
-        ]);
+        ])?? false;
     }
 
     // =========================
@@ -95,6 +95,7 @@ class PusatDataTeknis extends Page implements HasTable
             ->filters([
                 SelectFilter::make('bidang')
                     ->label('Bidang')
+                    
                     ->options(Bidang::pluck('nama', 'id')->toArray())
                     ->query(function ($query, array $data) {
                         if (empty($data['value'])) return $query;
@@ -106,6 +107,7 @@ class PusatDataTeknis extends Page implements HasTable
 
                 SelectFilter::make('kegiatan')
                     ->label('Kegiatan')
+                   
                     ->options(MasterKegiatanTeknis::pluck('nama', 'id')->toArray())
                     ->query(fn ($query, array $data) =>
                         empty($data['value'])
@@ -115,6 +117,7 @@ class PusatDataTeknis extends Page implements HasTable
 
                 SelectFilter::make('komoditas')
                     ->label('Komoditas')
+                    
                     ->options(Komoditas::pluck('nama', 'id')->toArray())
                     ->query(function ($query, array $data) {
                         if (empty($data['value'])) return $query;
@@ -126,6 +129,7 @@ class PusatDataTeknis extends Page implements HasTable
 
                 SelectFilter::make('upt')
                     ->label('UPT')
+                    
                     ->options(Upt::pluck('nama', 'id')->toArray())
                     ->query(function ($query, array $data) {
                         if (empty($data['value'])) return $query;
@@ -149,169 +153,57 @@ class PusatDataTeknis extends Page implements HasTable
                     }),
             ])
             ->paginated([10, 25, 50]);
+
+            
+    }
+ 
+
+    protected function hitungStatFiltered(): void
+    {
+        // AMBIL QUERY DARI TABLE (SUDAH TERFILTER)
+        $query = $this->getTable()->getQuery();
+
+        // CLONE SUPAYA AMAN
+        $base = clone $query;
+
+        $this->statTotalNilai = (float) (clone $base)->sum('data_teknis.nilai');
+
+        $this->statJumlahLaporan = (int) (clone $base)->count('data_teknis.id');
+
+        $this->statUnitUsaha = (int) (clone $base)
+            ->distinct('data_teknis.objek_produksi_id')
+            ->count('data_teknis.objek_produksi_id');
+
+        $this->statPelaku = (int) (clone $base)
+            ->join('objek_produksis', 'data_teknis.objek_produksi_id', '=', 'objek_produksis.id')
+            ->distinct('objek_produksis.pemilik_id')
+            ->count('objek_produksis.pemilik_id');
     }
 
-    protected function loadPelakuUsaha(): void
-        {
-            $query = \App\Models\Pemilik::query()
-                ->with([
-                    'desa.kecamatan',
-                    'objekProduksis.komoditas',
-                ])
-                ->whereHas('objekProduksis');
 
-            // =========================
-            // FILTER KECAMATAN
-            // =========================
-            if ($this->filterKecamatan) {
-                $query->whereHas('desa', fn ($q) =>
-                    $q->where('kecamatan_id', $this->filterKecamatan)
-                );
-            }
+    
 
-            // =========================
-            // FILTER KOMODITAS
-            // =========================
-            if ($this->filterKomoditas) {
-                $query->whereHas('objekProduksis', fn ($q) =>
-                    $q->where('komoditas_id', $this->filterKomoditas)
-                );
-            }
+    public function getPelakuUsahaProperty()
+{
+    // 🔵 ambil DATA YANG SUDAH TERFILTER dari TABLE
+    $records = $this->getTableRecords();
 
-            $rows = $query->get();
+    return $records
+        ->map(function ($row) {
 
-            // $this->pelakuUsaha = $rows->map(function ($p) {
-            //     return [
-            //         'nama'       => $p->nama,
-            //         'alamat'     => $p->alamat,
-            //         'desa'       => $p->desa->nama ?? '-',
-            //         'kecamatan'  => $p->desa->kecamatan->nama ?? '-',
-            //         'unit_usaha' => $p->objekProduksis->count(),
-            //     ];
-            // })->toArray();
-            $this->pelakuUsaha = [
-        [
-            'nama' => 'TEST NAMA',
-            'alamat' => 'TEST ALAMAT',
-            'desa' => 'TEST DESA',
-            'kecamatan' => 'TEST KECAMATAN',
-            'komoditas' => 'TEST KOMODITAS',
-            'unit_usaha' => 1,
-        ],
-    ];
+            $pemilik = $row->objekProduksi?->pemilik;
 
-    $this->totalPelaku = 1;
-        }
-
-
-    protected function afterTableFiltersApplied(): void
-        {
-            $this->loadPelakuUsaha();
-            $this->hitungStatFiltered();
-        }
-
-
-    public function hitungPelakuUsaha(): void
-        {
-            $filters = $this->getTableFiltersForm()?->getState() ?? [];
-
-            $query = DataTeknis::query()
-                ->join('objek_produksis', 'data_teknis.objek_produksi_id', '=', 'objek_produksis.id')
-                ->join('pemiliks', 'objek_produksis.pemilik_id', '=', 'pemiliks.id')
-                ->leftJoin('desas', 'pemiliks.desa_id', '=', 'desas.id');
-
-            // =========================
-            // TERAPKAN FILTER YANG SAMA
-            // =========================
-
-            if (!empty($filters['bidang'])) {
-                $query->whereHas('kegiatan', fn ($q) =>
-                    $q->where('bidang_id', $filters['bidang'])
-                );
-            }
-
-            if (!empty($filters['kegiatan'])) {
-                $query->where('data_teknis.kegiatan_id', $filters['kegiatan']);
-            }
-
-            if (!empty($filters['komoditas'])) {
-                $query->where('objek_produksis.komoditas_id', $filters['komoditas']);
-            }
-
-            if (!empty($filters['upt'])) {
-                $query->where('objek_produksis.upt_id', $filters['upt']);
-            }
-
-            if (!empty($filters['tanggal']['dari'])) {
-                $query->whereDate('data_teknis.tanggal', '>=', $filters['tanggal']['dari']);
-            }
-
-            if (!empty($filters['tanggal']['sampai'])) {
-                $query->whereDate('data_teknis.tanggal', '<=', $filters['tanggal']['sampai']);
-            }
-
-            // =========================
-            // AGREGASI PER PELAKU
-            // =========================
-            $rows = $query
-                ->selectRaw('
-                    pemiliks.id,
-                    pemiliks.nama,
-                    pemiliks.alamat,
-                    desas.nama as desa,
-                    COUNT(DISTINCT objek_produksis.id) as unit_usaha,
-                    COUNT(data_teknis.id) as jumlah_laporan
-                ')
-                ->groupBy('pemiliks.id', 'pemiliks.nama', 'pemiliks.alamat', 'desas.nama')
-                ->orderByDesc('jumlah_laporan')
-                ->get();
-
-            $this->pelakuUsaha = $rows->toArray();
-            $this->totalPelaku = $rows->count();
-        }
-
-        public function updated($property): void
-        {
-            if (in_array($property, ['filterKecamatan', 'filterKomoditas'])) {
-                $this->loadPelakuUsaha();
-            }
-        }
-
-
-        protected function hitungStatFiltered(): void
-        {
-            // AMBIL QUERY DARI TABLE (SUDAH TERFILTER)
-            $query = $this->getTable()->getQuery();
-
-            // CLONE SUPAYA AMAN
-            $base = clone $query;
-
-            $this->statTotalNilai = (float) (clone $base)->sum('data_teknis.nilai');
-
-            $this->statJumlahLaporan = (int) (clone $base)->count('data_teknis.id');
-
-            $this->statUnitUsaha = (int) (clone $base)
-                ->distinct('data_teknis.objek_produksi_id')
-                ->count('data_teknis.objek_produksi_id');
-
-            $this->statPelaku = (int) (clone $base)
-                ->join('objek_produksis', 'data_teknis.objek_produksi_id', '=', 'objek_produksis.id')
-                ->distinct('objek_produksis.pemilik_id')
-                ->count('objek_produksis.pemilik_id');
-        }
-
-
-       
-
-
-
-
-
-
-
-
-
-
+            return [
+                'nama'        => $pemilik?->nama,
+                'alamat'      => $pemilik?->alamat,
+                'desa'        => $pemilik?->desa?->nama,
+                'kecamatan'   => $pemilik?->desa?->kecamatan?->nama,
+                'unit_usaha'  => $row->objekProduksi?->nama,
+            ];
+        })
+        ->unique('nama')
+        ->values();
+}
 
 
 }

@@ -50,6 +50,6 @@ class DesaResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()->hasRole('super_admin');
+        return auth()->user()?->hasRole('super_admin') ?? false;
     }
 }

@@ -21,15 +21,15 @@ class PeternakanPerikananDalamAngka extends Page
     public int $tahun;
 
     // =========================
-    // PRODUKSI & TREN
+    // PRODUKSI (ARRAY PER KOMODITAS)
     // =========================
-    public float $produksiTahunIni = 0;
-    public float $produksiTahunLalu = 0;
+    public array $produksiTahunIni = [];
+    public array $produksiTahunLalu = [];
+
     public float $trenProduksiPersen = 0;
     public string $trenProduksiLabel = '';
-    public float $totalProduksi = 0;
-    public array $produksiPerBidang = [];
 
+    public array $produksiPerBidang = [];
 
     // =========================
     // POPULASI
@@ -70,23 +70,54 @@ class PeternakanPerikananDalamAngka extends Page
     }
 
     // =========================
-    // LOGIKA
+    // LOGIKA UTAMA
     // =========================
     public function hitungData(): void
     {
-        // PRODUKSI
-        $this->produksiTahunIni = DataTeknis::whereYear('tanggal', $this->tahun)
+        /**
+         * =====================================================
+         * PRODUKSI TAHUN INI (PER KOMODITAS & SATUAN)
+         * =====================================================
+         */
+        $this->produksiTahunIni = DataTeknis::query()
+            ->whereYear('data_teknis.tanggal', $this->tahun)
+            ->whereIn('data_teknis.kegiatan_id', $this->kegiatanProduksi)
+            ->join('objek_produksis', 'data_teknis.objek_produksi_id', '=', 'objek_produksis.id')
+            ->join('komoditas', 'objek_produksis.komoditas_id', '=', 'komoditas.id')
+            ->selectRaw('
+                komoditas.nama,
+                komoditas.satuan_default,
+                SUM(data_teknis.nilai) as total
+            ')
+            ->groupBy('komoditas.nama', 'komoditas.satuan_default')
+            ->get()
+            ->map(fn ($r) => [
+                'nama' => $r->nama,
+                'satuan_default' => $r->satuan_default,
+                'total' => (float) $r->total,
+            ])
+            ->toArray();
+
+        /**
+         * =====================================================
+         * PRODUKSI TAHUN LALU (HANYA UNTUK TREND GLOBAL)
+         * Catatan: tidak menjumlah lintas satuan untuk output,
+         * hanya indikator tren makro.
+         * =====================================================
+         */
+        $totalIniGlobal = DataTeknis::query()
+            ->whereYear('tanggal', $this->tahun)
             ->whereIn('kegiatan_id', $this->kegiatanProduksi)
             ->sum('nilai');
 
-        $this->produksiTahunLalu = DataTeknis::whereYear('tanggal', $this->tahun - 1)
+        $totalLaluGlobal = DataTeknis::query()
+            ->whereYear('tanggal', $this->tahun - 1)
             ->whereIn('kegiatan_id', $this->kegiatanProduksi)
             ->sum('nilai');
 
-        if ($this->produksiTahunLalu > 0) {
+        if ($totalLaluGlobal > 0) {
             $this->trenProduksiPersen =
-                (($this->produksiTahunIni - $this->produksiTahunLalu)
-                / $this->produksiTahunLalu) * 100;
+                (($totalIniGlobal - $totalLaluGlobal) / $totalLaluGlobal) * 100;
         } else {
             $this->trenProduksiPersen = 0;
         }
@@ -99,17 +130,25 @@ class PeternakanPerikananDalamAngka extends Page
             $this->trenProduksiLabel = 'Produksi relatif stabil';
         }
 
-        $this->totalProduksi = $this->produksiTahunIni;
-
-        // POPULASI
-        $this->totalPopulasi = DataTeknis::whereYear('tanggal', $this->tahun)
+        /**
+         * =====================================================
+         * POPULASI
+         * =====================================================
+         */
+        $this->totalPopulasi = DataTeknis::query()
+            ->whereYear('tanggal', $this->tahun)
             ->whereIn('kegiatan_id', $this->kegiatanPopulasi)
             ->sum('nilai');
 
-        // UPT
+        /**
+         * =====================================================
+         * UPT
+         * =====================================================
+         */
         $this->totalUpt = Upt::count();
 
-        $this->uptMelapor = DataTeknis::whereYear('tanggal', $this->tahun)
+        $this->uptMelapor = DataTeknis::query()
+            ->whereYear('tanggal', $this->tahun)
             ->distinct('upt_id')
             ->count('upt_id');
 
@@ -119,7 +158,11 @@ class PeternakanPerikananDalamAngka extends Page
             ? ($this->uptMelapor / $this->totalUpt) * 100
             : 0;
 
-        // RINGKASAN BIDANG
+        /**
+         * =====================================================
+         * RINGKASAN PER BIDANG
+         * =====================================================
+         */
         $this->ringkasanPerBidang = DataTeknis::query()
             ->whereYear('tanggal', $this->tahun)
             ->join('master_kegiatan_teknis', 'data_teknis.kegiatan_id', '=', 'master_kegiatan_teknis.id')
@@ -134,7 +177,11 @@ class PeternakanPerikananDalamAngka extends Page
             ])
             ->toArray();
 
-        // DATA GRAFIK BULANAN
+        /**
+         * =====================================================
+         * PRODUKSI BULANAN
+         * =====================================================
+         */
         $this->produksiBulanan = DataTeknis::query()
             ->selectRaw('MONTH(tanggal) as bulan, SUM(nilai) as total')
             ->whereYear('tanggal', $this->tahun)
@@ -144,20 +191,19 @@ class PeternakanPerikananDalamAngka extends Page
             ->pluck('total', 'bulan')
             ->toArray();
 
-
-            // grafik per bidang
+        /**
+         * =====================================================
+         * PRODUKSI PER BIDANG
+         * =====================================================
+         */
         $this->produksiPerBidang = DataTeknis::query()
             ->whereYear('data_teknis.tanggal', $this->tahun)
             ->join('master_kegiatan_teknis', 'data_teknis.kegiatan_id', '=', 'master_kegiatan_teknis.id')
             ->join('master_bidang', 'master_kegiatan_teknis.bidang_id', '=', 'master_bidang.id')
-            ->selectRaw('
-                master_bidang.nama as bidang,
-                SUM(data_teknis.nilai) as total
-            ')
+            ->selectRaw('master_bidang.nama as bidang, SUM(data_teknis.nilai) as total')
             ->groupBy('master_bidang.nama')
             ->pluck('total', 'bidang')
             ->toArray();
-
     }
 
     // =========================
@@ -168,6 +214,6 @@ class PeternakanPerikananDalamAngka extends Page
         return auth()->user()?->hasAnyRole([
             'kepala_dinas',
             'super_admin',
-        ]);
+        ]) ?? false;
     }
 }

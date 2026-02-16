@@ -22,6 +22,8 @@ class UnitLayananForm
                 )
                 ->searchable()
                 ->required()
+                ->preload()
+                ->live()
                 ->helperText('UPT organisasi yang membawahi unit layanan ini'),
 
             TextInput::make('nama')
@@ -32,6 +34,8 @@ class UnitLayananForm
                 ->label('Wilayah Kecamatan')
                 ->relationship('kecamatans', 'nama')
                 ->searchable()
+                ->preload()
+                ->live()
                 ->helperText('Pilih kecamatan yang masuk dalam cakupan pelayanan unit ini'),
 
 
