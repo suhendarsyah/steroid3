@@ -188,7 +188,10 @@ public function filtersForm(Schema $schema): Schema
                     'default' => 1,
                     'md' => 4,
                 ])
-                ->columnSpanFull(),
+                ->columnSpanFull()
+                ->extraAttributes([
+                        'class' => 'relative'
+                    ]),
         ]);
 }
 

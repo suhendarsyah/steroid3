@@ -39,6 +39,16 @@
             ->first(fn ($role) => $user?->hasRole($role));
     @endphp
 
+    <div wire:loading.delay
+     <!-- wire:target="filtersForm" -->
+     class="fixed top-4 right-4 z-50
+            bg-primary-600 text-white
+            px-3 py-2 rounded-lg shadow-lg text-xs
+            animate-pulse">
+
+    🔄 Memperbarui Dashboard...
+</div>
+
     <div class="space-y-4">
         <h1 class="text-2xl font-bold">
             Selamat Datang
@@ -53,6 +63,9 @@
             </p>
         @endif
     </div>
+
+    
+
 
     @if ($activeRole === 'kepala_dinas' && !empty($this->kepalaDinasSummary))
         <div class="mt-6 border rounded-lg p-4 bg-gray-50">

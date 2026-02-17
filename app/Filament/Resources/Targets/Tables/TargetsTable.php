@@ -18,7 +18,7 @@ class TargetsTable
                 // TextColumn::make('master_bidang_id')
                 //     ->numeric()
                 //     ->sortable(),
-                TextColumn::make('bidang.nama')
+                TextColumn::make('komoditas.bidang.nama')
                     ->label('Bidang')
                     ->sortable(),
                 // TextColumn::make('komoditas_id')
@@ -26,9 +26,6 @@ class TargetsTable
                 //     ->sortable(),
                 TextColumn::make('komoditas.nama')
                     ->label('Komoditas')
-                    ->sortable(),
-                TextColumn::make('target_jumlah')
-                    ->numeric()
                     ->sortable(),
                 TextColumn::make('created_at')
                     ->dateTime()
@@ -41,7 +38,8 @@ class TargetsTable
 
 
                 TextColumn::make('target_jumlah')
-                     ->label('Target'),
+                     ->label('Target')
+                     ->sortable(),
 
                 TextColumn::make('realisasi')
                     ->label('Realisasi')

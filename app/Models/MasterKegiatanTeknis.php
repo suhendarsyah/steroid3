@@ -20,4 +20,10 @@ class MasterKegiatanTeknis extends Model
             return $this->belongsTo(Bidang::class, 'bidang_id');
         }
 
+    public function kegiatan()
+        {
+            return $this->belongsTo(MasterKegiatanTeknis::class, 'kegiatan_id');
+        }
+
+
 }

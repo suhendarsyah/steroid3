@@ -74,7 +74,7 @@ class TopUptAktifWidget extends Widget
             ->map(function ($items) {
                 return [
                     'nama' => $items->first()->upt->nama ?? '-',
-                    'total' => $items->sum('nilai'),
+                    'total' => $items->count(),
                 ];
             })
             ->sortByDesc('total')

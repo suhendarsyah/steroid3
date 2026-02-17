@@ -60,7 +60,9 @@ class StatKepalaDinasWidget extends StatsOverviewWidget
          */
         // $baseQuery = DataTeknis::query();
 
-        $baseQuery = DataTeknis::query()->select(['id','upt_id','objek_produksi_id','tanggal']);
+        $baseQuery = DataTeknis::query()
+            ->select(['id','upt_id','objek_produksi_id','kegiatan_id','tanggal']);
+
 
 
         if ($startDate) {
@@ -112,13 +114,15 @@ class StatKepalaDinasWidget extends StatsOverviewWidget
          * 🔥 BIDANG TERAKTIF (DINAMIS - bukan hardcode)
          */
         $bidangTeraktif = (clone $baseQuery)
-            ->with('upt.bidang')
+            ->with('kegiatan.bidang')
             ->get()
-            ->groupBy(fn($row) => optional($row->upt->bidang)->nama)
+            ->filter(fn($row) => optional($row->kegiatan)->bidang_id)
+            ->groupBy(fn($row) => optional($row->kegiatan->bidang)->nama ?? 'Tanpa Bidang')
             ->map(fn($items) => $items->count())
             ->sortDesc()
             ->keys()
             ->first() ?? '-';
+
 
         /**
          * 🔥 ROLE AWARE OUTPUT

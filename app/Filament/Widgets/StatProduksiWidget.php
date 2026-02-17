@@ -92,11 +92,40 @@ class StatProduksiWidget extends StatsOverviewWidget
         /**
          * 🔵 GROUP DATA PER KOMODITAS
          */
-        $komoditas = (clone $query)
+        // $komoditas = (clone $query)
+        //     ->get()
+        //     ->groupBy('objek_produksi_id')
+        //     ->map(fn ($items) => $items->sum('nilai'))
+        //     ->sortDesc();
+
+        $topPerBidang = (clone $query)
+            ->with(['kegiatan.bidang','objekProduksi.komoditas'])
             ->get()
-            ->groupBy('objek_produksi_id')
-            ->map(fn ($items) => $items->sum('nilai'))
-            ->sortDesc();
+            ->groupBy(fn ($row) => optional($row->kegiatan)->bidang_id)
+            ->map(function ($items) {
+
+                $bidangNama = optional(
+                    optional($items->first()->kegiatan)->bidang
+                )->nama ?? 'Bidang';
+
+                $topObjek = $items
+                    ->groupBy('objek_produksi_id')
+                    ->map(function ($rows) {
+                        return [
+                            'total' => $rows->sum('nilai'),
+                            'objek' => optional($rows->first()->objekProduksi),
+                        ];
+                    })
+                    ->sortByDesc('total')
+                    ->first();
+
+                return [
+                    'bidang' => $bidangNama,
+                    'objek'  => $topObjek['objek'] ?? null,
+                    'total'  => $topObjek['total'] ?? 0,
+                ];
+            });
+
 
 
 
@@ -104,12 +133,15 @@ class StatProduksiWidget extends StatsOverviewWidget
         /**
          * 🔵 HITUNG GLOBAL (TIDAK HILANG)
          */
-        $totalProduksi = (clone $query)->sum('nilai');
+        // $totalProduksi = (clone $query)->sum('nilai');
+        $totalProduksi = (clone $query)->count();
 
-        $komoditasDominan = $komoditas
-            ->keys()
-            ->map(fn ($id) => optional(ObjekProduksi::find($id))->nama)
+
+        $komoditasDominan = $topPerBidang
+            ->map(fn ($row) => optional($row['objek'])->nama)
+            ->filter()
             ->first() ?? '-';
+
 
         /**
          * 🔥 BUILD STATS (TANPA KONFLIK)
@@ -119,7 +151,7 @@ class StatProduksiWidget extends StatsOverviewWidget
         /**
          * 🟢 GLOBAL STATS
          */
-        $stats[] = Stat::make('Total Produksi', $totalProduksi)
+        $stats[] = Stat::make('Total Laporan', number_format($totalProduksi))
             ->description('Akumulasi produksi sesuai filter')
             ->icon('heroicon-o-cube');
 
@@ -130,15 +162,24 @@ class StatProduksiWidget extends StatsOverviewWidget
         /**
          * 🔵 KOMODITAS DINAMIS
          */
-        foreach ($komoditas as $objekId => $jumlah) {
+        foreach ($topPerBidang as $item) {
 
-            $nama = optional(
-                ObjekProduksi::find($objekId)
-            )->nama ?? 'Komoditas';
+            $namaBidang = $item['bidang'];
 
-            $stats[] = Stat::make($nama, $jumlah)
-                ->icon('heroicon-o-chart-bar');
+            $namaObjek = optional($item['objek'])->nama ?? 'Komoditas';
+
+            $satuan = optional(
+                optional($item['objek'])->komoditas
+            )->satuan_default ?? '';
+
+            $stats[] = Stat::make(
+                $namaBidang,
+                number_format($item['total']) . ' ' . $satuan
+            )
+            ->description('Komoditas dominan: ' . $namaObjek)
+            ->icon('heroicon-o-chart-bar');
         }
+
 
         return $stats;
     }

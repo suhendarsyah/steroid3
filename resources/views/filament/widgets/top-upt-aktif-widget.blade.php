@@ -8,11 +8,11 @@
             <div class="flex justify-between border rounded-lg p-3">
                 <div>
                     <span class="font-bold">
-                        #{{ $index + 1 }} {{ $upt['nama'] }}
+                        # {{ $upt['nama'].' '.'-->'. $upt['total'] . '  laporan'}} 
                     </span>
                 </div>
                 <div class="font-semibold">
-                    {{ $upt['total'] }}
+                    
                 </div>
             </div>
         @endforeach
