@@ -16,7 +16,7 @@ class UptsTable
             ->columns([
                 TextColumn::make('nama')
                     ->searchable(),
-                TextColumn::make('jenis')
+                TextColumn::make('jenis_upt')
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->dateTime()
