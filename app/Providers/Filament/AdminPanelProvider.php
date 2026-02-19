@@ -50,6 +50,8 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->homeUrl(fn() => \App\Filament\Pages\Dashboard::getUrl())
             ->profile()   // 👤 menu user
+            ->sidebarCollapsibleOnDesktop()
+
             
 
             ->login()

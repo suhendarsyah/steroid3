@@ -106,17 +106,34 @@
                         });
                 @endphp
 
-                <strong>Result:</strong>
+                <!-- <strong>Result & </strong> -->
 
-                @forelse($resultByKomoditas as $nama => $data)
+                <strong>Result & Trend Komoditas:</strong>
+
+                @forelse($this->trendKomoditas as $nama => $data)
+
+                    @php
+                        $icon = match($data['status']) {
+                            'naik' => '⬆️',
+                            'turun' => '⬇️',
+                            'stabil' => '➡️',
+                            default => '🆕',
+                        };
+                    @endphp
+
                     <div>
-                        {{ $nama ?? '-' }} :
-                        {{ number_format($data['total']) }}
-                        {{ $data['satuan'] }}
+                        {{ $icon }} {{ $nama }} :
+                        {{ number_format($data['nilai'],2,',','.') }}
+
+                        @if(!is_null($data['persen']))
+                            ({{ number_format($data['persen'],1) }}%)
+                        @endif
                     </div>
+
                 @empty
                     -
                 @endforelse
+
 
             </div>
         </div>

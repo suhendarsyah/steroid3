@@ -33,9 +33,37 @@ class DataTeknisTable
                 TextColumn::make('tanggal')
                     ->date()
                     ->sortable(),
+                // TextColumn::make('nilai')
+                //     ->numeric()
+                //     ->sortable(),
                 TextColumn::make('nilai')
-                    ->numeric()
-                    ->sortable(),
+                    ->label('Jumlah')
+                    ->formatStateUsing(function ($state, $record) {
+
+                        $satuan = optional(
+                            optional($record->objekProduksi)->komoditas
+                        )->satuan_default ?? '';
+
+                        return number_format($state) . ' ' . $satuan;
+                    })
+                    ->sortable()
+                    ->formatStateUsing(function ($state, $record) {
+
+                        $komoditas = optional(
+                            optional($record->objekProduksi)->komoditas
+                        );
+
+                        $satuan = $komoditas?->satuan_default ?? '';
+
+                        // jika satuan ekor → bulat
+                        if (strtolower($satuan) === 'ekor') {
+                            return number_format($state, 0, ',', '.') . ' ' . $satuan;
+                        }
+
+                        // selain ekor → pakai 2 desimal
+                        return number_format($state, 2, ',', '.') . ' ' . $satuan;
+                    }),
+
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

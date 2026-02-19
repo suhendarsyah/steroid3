@@ -85,9 +85,39 @@ class PusatDataTeknis extends Page implements HasTable
                 Tables\Columns\TextColumn::make('objekProduksi.komoditas.nama')
                     ->label('Komoditas'),
 
+                // Tables\Columns\TextColumn::make('nilai')
+                //     ->label('Nilai')
+                //     ->numeric(),
+
                 Tables\Columns\TextColumn::make('nilai')
-                    ->label('Nilai')
-                    ->numeric(),
+                    ->label('Jumlah')
+                    ->formatStateUsing(function ($state, $record) {
+
+                        $satuan = optional(
+                            optional($record->objekProduksi)->komoditas
+                        )->satuan_default ?? '';
+
+                        return number_format($state) . ' ' . $satuan;
+                    })
+                    ->sortable()
+                    ->formatStateUsing(function ($state, $record) {
+
+                            $komoditas = optional(
+                                optional($record->objekProduksi)->komoditas
+                            );
+
+                            $satuan = $komoditas?->satuan_default ?? '';
+
+                            // jika satuan ekor → tanpa desimal
+                            if (strtolower($satuan) === 'ekor') {
+                                return number_format($state, 0, ',', '.') . ' ' . $satuan;
+                            }
+
+                            // selain ekor → tampilkan desimal asli
+                            return number_format($state, 2, ',', '.') . ' ' . $satuan;
+                        }),
+
+
 
                 Tables\Columns\TextColumn::make('objekProduksi.upt.nama')
                     ->label('UPT'),
@@ -184,26 +214,104 @@ class PusatDataTeknis extends Page implements HasTable
     
 
     public function getPelakuUsahaProperty()
+            {
+                // 🔵 ambil DATA YANG SUDAH TERFILTER dari TABLE
+                $records = $this->getTableRecords();
+
+                return $records
+                    ->map(function ($row) {
+
+                        $pemilik = $row->objekProduksi?->pemilik;
+
+                        return [
+                            'nama'        => $pemilik?->nama,
+                            'alamat'      => $pemilik?->alamat,
+                            'desa'        => $pemilik?->desa?->nama,
+                            'kecamatan'   => $pemilik?->desa?->kecamatan?->nama,
+                            'unit_usaha'  => $row->objekProduksi?->nama,
+                        ];
+                    })
+                    ->unique('nama')
+                    ->values();
+            }
+
+
+    public function getTrendKomoditasProperty()
 {
-    // 🔵 ambil DATA YANG SUDAH TERFILTER dari TABLE
     $records = $this->getTableRecords();
 
-    return $records
-        ->map(function ($row) {
+    if ($records->isEmpty()) {
+        return collect();
+    }
 
-            $pemilik = $row->objekProduksi?->pemilik;
+    // ========================
+    // PERIODE SEKARANG
+    // ========================
+    $minTanggal = $records->min('tanggal');
+    $maxTanggal = $records->max('tanggal');
 
-            return [
-                'nama'        => $pemilik?->nama,
-                'alamat'      => $pemilik?->alamat,
-                'desa'        => $pemilik?->desa?->nama,
-                'kecamatan'   => $pemilik?->desa?->kecamatan?->nama,
-                'unit_usaha'  => $row->objekProduksi?->nama,
-            ];
-        })
-        ->unique('nama')
-        ->values();
+    $start = \Carbon\Carbon::parse($minTanggal);
+    $end   = \Carbon\Carbon::parse($maxTanggal);
+
+    $diffDays = $start->diffInDays($end) ?: 1;
+
+    // ========================
+    // PERIODE SEBELUMNYA
+    // ========================
+    $prevStart = $start->copy()->subDays($diffDays + 1);
+    $prevEnd   = $start->copy()->subDay();
+
+    // ========================
+    // TOTAL SEKARANG
+    // ========================
+    $current = $records
+        ->groupBy(fn ($r) => optional($r->objekProduksi?->komoditas)->nama)
+        ->map(fn ($rows) => $rows->sum('nilai'));
+
+    // ========================
+    // QUERY PERIODE SEBELUMNYA
+    // ========================
+    $previousRecords = \App\Models\DataTeknis::query()
+        ->whereDate('tanggal','>=',$prevStart)
+        ->whereDate('tanggal','<=',$prevEnd)
+        ->with('objekProduksi.komoditas')
+        ->get();
+
+    $previous = $previousRecords
+        ->groupBy(fn ($r) => optional($r->objekProduksi?->komoditas)->nama)
+        ->map(fn ($rows) => $rows->sum('nilai'));
+
+    // ========================
+    // HITUNG TREND
+    // ========================
+    return $current->map(function ($nilai, $nama) use ($previous) {
+
+        $sebelumnya = $previous[$nama] ?? 0;
+
+        if ($sebelumnya == 0) {
+            $status = 'baru';
+            $persen = null;
+        } else {
+            $diff   = $nilai - $sebelumnya;
+            $persen = ($diff / $sebelumnya) * 100;
+
+            if ($persen > 5) {
+                $status = 'naik';
+            } elseif ($persen < -5) {
+                $status = 'turun';
+            } else {
+                $status = 'stabil';
+            }
+        }
+
+        return [
+            'nilai' => $nilai,
+            'status' => $status,
+            'persen' => $persen,
+        ];
+    });
 }
+
 
 
 }
