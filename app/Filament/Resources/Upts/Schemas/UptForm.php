@@ -14,12 +14,12 @@ class UptForm
             ->components([
                 TextInput::make('nama')
                     ->required(),
-                Select::make('jenis')
-            ->options([
-                'wilayah' => 'UPT Wilayah',
-                'tematis' => 'UPT Tematis',
-            ])
-            ->required()
+                Select::make('jenis_upt')
+                    ->options([
+                        'wilayah' => 'UPT Wilayah',
+                        'tematis' => 'UPT Tematis',
+                    ])
+                    ->required()
             ]);
     }
 }

@@ -2,203 +2,182 @@
 
 namespace App\Filament\Resources\ObjekProduksis\Schemas;
 
-use App\Models\UnitLayanan;
 use Filament\Schemas\Schema;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Hidden;
+use App\Models\UnitLayanan;
+use App\Models\Upt;
+use App\Models\Komoditas;
 
 class ObjekProduksiForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema
-            ->components([
+        return $schema->components([
 
-                /*
-                |--------------------------------------------------------------------------
-                | UPT (AUTO DARI USER LOGIN)
-                |--------------------------------------------------------------------------
-                */
-                Hidden::make('upt_id')
-                    ->default(fn () => auth()->user()->upt_id)
-                    ->required(),
+            /*
+            |--------------------------------------------------------------------------
+            | AUTO DETECT UPT LOGIN (ENGINE STEROID)
+            |--------------------------------------------------------------------------
+            */
+            Hidden::make('upt_id')
+                ->default(fn() => auth()->user()->upt_id)
+                ->dehydrated(true)
+                ->required(),
 
-                /*
-                |--------------------------------------------------------------------------
-                | IDENTITAS OBJEK PRODUKSI
-                |--------------------------------------------------------------------------
-                */
-                TextInput::make('nama')
-                    ->label('Nama Unit Usaha')
-                    ->placeholder('Contoh: Produksi Daging Sapi')
-                    ->required(),
-                // Select::make('objek_produksi_id')
-                //     ->label('Unit Usaha')
-                //     ->relationship('objekProduksi', 'nama')
-                //     ->searchable()
-                //     ->preload(),
+            /*
+            |--------------------------------------------------------------------------
+            | NAMA UNIT USAHA
+            |--------------------------------------------------------------------------
+            */
+            TextInput::make('nama')
+                ->label('Nama Unit Usaha')
+                ->required(),
 
-                /*
-                |--------------------------------------------------------------------------
-                | UNIT LAYANAN (KHUSUS UPT TEMATIK)
-                |--------------------------------------------------------------------------
-                */
-                Select::make('unit_layanan_id')
-                    ->label('Unit Layanan')
-                    ->options(
-                        UnitLayanan::query()
-                            ->where('upt_id', auth()->user()->upt_id)
-                            ->pluck('nama', 'id')
-                            ->toArray()
-                    )
-                    ->searchable()
-                    ->preload()
-                    ->nullable()
-                    ->helperText('Kosongkan jika UPT Wilayah'),
+            /*
+            |--------------------------------------------------------------------------
+            | UNIT LAYANAN (AUTO MODE STEROID)
+            |--------------------------------------------------------------------------
+            */
+            Select::make('unit_layanan_id')
+                ->label('Unit Layanan')
+                ->options(function () {
 
-                /*
-                |--------------------------------------------------------------------------
-                | PEMILIK
-                |--------------------------------------------------------------------------
-                */
-                Select::make('pemilik_id')
-                    ->label('Pemilik')
-                    ->relationship('pemilik', 'nama')
-                    ->searchable()
-                    ->preload()
-                    ->required()
-                    ->live(),
+                    $uptId = auth()->user()->upt_id;
 
-                /*
-                |--------------------------------------------------------------------------
-                | KOMODITAS
-                |--------------------------------------------------------------------------
-                */
-                Select::make('komoditas_id')
-                    ->label('Komoditas')
-                    ->relationship(
-                            name: 'komoditas',
-                            titleAttribute: 'nama',
-                            modifyQueryUsing: function ($query, callable $get) {
+                    return UnitLayanan::query()
+                        ->where('upt_id', $uptId)
+                        ->pluck('nama', 'id')
+                        ->toArray();
+                })
+                ->searchable()
+                ->preload()
 
-                                $pemilikId = $get('pemilik_id');
+                /**
+                 * ⭐ WAJIB HANYA JIKA TEMATIK
+                 */
+                ->required(function () {
 
-                                if ($pemilikId) {
+                    $upt = Upt::find(auth()->user()->upt_id);
 
-                                    $query->where(function ($q) use ($pemilikId) {
+                    return $upt?->jenis_upt === 'tematis';
+                })
 
-                                        $q->whereIn('id', function ($sub) use ($pemilikId) {
-                                            $sub->select('komoditas_id')
-                                                ->from('objek_produksis')
-                                                ->where('pemilik_id', $pemilikId);
-                                        })
-                                        ->orWhereNotExists(function ($sub) use ($pemilikId) {
-                                            $sub->selectRaw(1)
-                                                ->from('objek_produksis')
-                                                ->where('pemilik_id', $pemilikId);
-                                        });
+                /**
+                 * ⭐ ENGINE STEROID
+                 * jika tidak dipakai → tidak dikirim ke DB
+                 */
+                ->dehydrated(fn($state) => filled($state))
 
-                                    });
-                                }
-                            }
-                        )
+                ->helperText(function () {
 
-                    ->searchable()
-                    ->preload()
-                    ->required()
-                    ->live(),
+                    $upt = Upt::find(auth()->user()->upt_id);
 
+                    return $upt?->jenis_upt === 'tematis'
+                        ? 'UPT Tematik wajib memilih Unit Layanan'
+                        : 'UPT Wilayah boleh dikosongkan';
+                }),
 
-                /*
-                |--------------------------------------------------------------------------
-                | OPSIONAL
-                |--------------------------------------------------------------------------
-                */
-                TextInput::make('kode_identitas')
-                    ->label('Kode Identitas')
-                    ->nullable(),
+            /*
+            |--------------------------------------------------------------------------
+            | PEMILIK
+            |--------------------------------------------------------------------------
+            */
+            Select::make('pemilik_id')
+                ->relationship('pemilik', 'nama')
+                ->searchable()
+                ->preload()
+                ->required()
+                ->live(),
 
-                TextInput::make('jumlah')
-                    ->label('Jumlah')
-                    ->numeric()
-                    ->default(1)
-                    ->required()
-                    ->live() // ⭐ supaya update saat komoditas berubah
+            /*
+            |--------------------------------------------------------------------------
+            | KOMODITAS (AUTO FILTER PEMILIK)
+            |--------------------------------------------------------------------------
+            */
+            Select::make('komoditas_id')
+                ->relationship(
+                    name: 'komoditas',
+                    titleAttribute: 'nama',
+                    modifyQueryUsing: function ($query, callable $get) {
 
-                    /**
-                     * 🔵 STEP OTOMATIS
-                     * individu = 1
-                     * produksi = 0.01
-                     */
-                    ->step(function (callable $get) {
+                        $pemilikId = $get('pemilik_id');
 
-                        $komoditasId = $get('komoditas_id');
-
-                        if (!$komoditasId) return 0.01;
-
-                        $komoditas = \App\Models\Komoditas::find($komoditasId);
-
-                        if ($komoditas?->is_individual) {
-                            return 1;
+                        if (!$pemilikId) {
+                            return;
                         }
 
-                        return 0.01;
-                    })
+                        $query->where(function ($q) use ($pemilikId) {
 
-                    /**
-                     * 🔵 VALIDASI DINAMIS
-                     */
-                    ->rule(function (callable $get) {
+                            $q->whereIn('id', function ($sub) use ($pemilikId) {
+                                $sub->select('komoditas_id')
+                                    ->from('objek_produksis')
+                                    ->where('pemilik_id', $pemilikId);
+                            })
+                                ->orWhereNotExists(function ($sub) use ($pemilikId) {
+                                    $sub->selectRaw(1)
+                                        ->from('objek_produksis')
+                                        ->where('pemilik_id', $pemilikId);
+                                });
+                        });
+                    }
+                )
+                ->searchable()
+                ->preload()
+                ->required()
+                ->live(),
 
-                        $komoditasId = $get('komoditas_id');
+            /*
+            |--------------------------------------------------------------------------
+            | OPSIONAL
+            |--------------------------------------------------------------------------
+            */
+            TextInput::make('kode_identitas')->nullable(),
 
-                        if (!$komoditasId) return 'numeric';
+            /*
+            |--------------------------------------------------------------------------
+            | JUMLAH (SMART STEP ENGINE)
+            |--------------------------------------------------------------------------
+            */
+            TextInput::make('jumlah')
+                ->numeric()
+                ->default(1)
+                ->required()
+                ->live()
 
-                        $komoditas = \App\Models\Komoditas::find($komoditasId);
+                ->step(function (callable $get) {
 
-                        if ($komoditas?->is_individual) {
-                            return 'integer';
-                        }
+                    $komoditas = Komoditas::find($get('komoditas_id'));
 
-                        return 'numeric';
-                    })
+                    return $komoditas?->is_individual ? 1 : 0.01;
+                })
 
-                    /**
-                     * 🔵 SUFFIX SATUAN OTOMATIS
-                     */
-                    ->suffix(function (callable $get) {
+                ->rule(function (callable $get) {
 
-                        $komoditasId = $get('komoditas_id');
+                    $komoditas = Komoditas::find($get('komoditas_id'));
 
-                        if (!$komoditasId) return null;
+                    return $komoditas?->is_individual ? 'integer' : 'numeric';
+                })
 
-                        return \App\Models\Komoditas::find($komoditasId)?->satuan_default;
-                    })
+                ->suffix(function (callable $get) {
 
-                    /**
-                     * 🔵 HINT BIAR USER PAHAM
-                     */
-                    ->hint(function (callable $get) {
+                    return Komoditas::find($get('komoditas_id'))?->satuan_default;
+                })
 
-                        $komoditasId = $get('komoditas_id');
+                ->hint(function (callable $get) {
 
-                        if (!$komoditasId) return null;
+                    $komoditas = Komoditas::find($get('komoditas_id'));
 
-                        $komoditas = \App\Models\Komoditas::find($komoditasId);
+                    return $komoditas?->is_individual
+                        ? 'Jumlah individu (bilangan bulat)'
+                        : 'Jumlah produksi sesuai satuan';
+                }),
 
-                        return $komoditas?->is_individual
-                            ? 'Jumlah individu (harus bilangan bulat)'
-                            : 'Jumlah produksi sesuai satuan komoditas';
-                    }),
-
-
-
-                TextInput::make('populasi_awal')
-                    ->label('Populasi Awal (ekor)')
-                    ->numeric()
-                    ->default(0)
-                    ->required(),
-            ]);
+            TextInput::make('populasi_awal')
+                ->numeric()
+                ->default(0)
+                ->required(),
+        ]);
     }
 }

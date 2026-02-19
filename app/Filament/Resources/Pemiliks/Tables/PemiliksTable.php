@@ -16,7 +16,7 @@ class PemiliksTable
             ->columns([
                 TextColumn::make('nama')
                     ->searchable(),
-                TextColumn::make('desa_id')
+                TextColumn::make('desa.nama')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('no_hp')
