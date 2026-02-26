@@ -53,23 +53,12 @@ class ObjekProduksiForm
                 })
                 ->searchable()
                 ->preload()
-
-                /**
-                 * ⭐ WAJIB HANYA JIKA TEMATIK
-                 */
                 ->required(function () {
 
                     $upt = Upt::find(auth()->user()->upt_id);
-
                     return $upt?->jenis_upt === 'tematis';
                 })
-
-                /**
-                 * ⭐ ENGINE STEROID
-                 * jika tidak dipakai → tidak dikirim ke DB
-                 */
                 ->dehydrated(fn($state) => filled($state))
-
                 ->helperText(function () {
 
                     $upt = Upt::find(auth()->user()->upt_id);
@@ -93,10 +82,30 @@ class ObjekProduksiForm
 
             /*
             |--------------------------------------------------------------------------
-            | KOMODITAS (AUTO FILTER PEMILIK)
+            | KOMODITAS / OBJEK PELAYANAN (LABEL DINAMIS STEROID)
             |--------------------------------------------------------------------------
             */
             Select::make('komoditas_id')
+
+                ->label(function () {
+
+                    $bidang = strtolower(auth()->user()->bidang->nama ?? '');
+
+                    if (str_contains($bidang, 'kesehatan')) {
+                        return 'Objek Pelayanan';
+                    }
+
+                    if (str_contains($bidang, 'peternakan')) {
+                        return 'Komoditas Ternak';
+                    }
+
+                    if (str_contains($bidang, 'perikanan')) {
+                        return 'Komoditas Perikanan';
+                    }
+
+                    return 'Komoditas';
+                })
+
                 ->relationship(
                     name: 'komoditas',
                     titleAttribute: 'nama',
@@ -115,11 +124,11 @@ class ObjekProduksiForm
                                     ->from('objek_produksis')
                                     ->where('pemilik_id', $pemilikId);
                             })
-                                ->orWhereNotExists(function ($sub) use ($pemilikId) {
-                                    $sub->selectRaw(1)
-                                        ->from('objek_produksis')
-                                        ->where('pemilik_id', $pemilikId);
-                                });
+                            ->orWhereNotExists(function ($sub) use ($pemilikId) {
+                                $sub->selectRaw(1)
+                                    ->from('objek_produksis')
+                                    ->where('pemilik_id', $pemilikId);
+                            });
                         });
                     }
                 )
@@ -145,26 +154,20 @@ class ObjekProduksiForm
                 ->default(1)
                 ->required()
                 ->live()
-
                 ->step(function (callable $get) {
 
                     $komoditas = Komoditas::find($get('komoditas_id'));
-
                     return $komoditas?->is_individual ? 1 : 0.01;
                 })
-
                 ->rule(function (callable $get) {
 
                     $komoditas = Komoditas::find($get('komoditas_id'));
-
                     return $komoditas?->is_individual ? 'integer' : 'numeric';
                 })
-
                 ->suffix(function (callable $get) {
 
                     return Komoditas::find($get('komoditas_id'))?->satuan_default;
                 })
-
                 ->hint(function (callable $get) {
 
                     $komoditas = Komoditas::find($get('komoditas_id'));
@@ -174,6 +177,11 @@ class ObjekProduksiForm
                         : 'Jumlah produksi sesuai satuan';
                 }),
 
+            /*
+            |--------------------------------------------------------------------------
+            | POPULASI AWAL
+            |--------------------------------------------------------------------------
+            */
             TextInput::make('populasi_awal')
                 ->numeric()
                 ->default(0)

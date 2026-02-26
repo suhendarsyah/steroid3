@@ -33,11 +33,27 @@
         ">
         Reset Map
     </button>
+    <div style="position:absolute;top:20px;left:70px;z-index:999;">
+    <select id="filterTahun"
+        style="
+            padding:8px;
+            left: 20px;
+            border-radius:8px;
+            background:#020617;
+            color:white;
+        ">
+        <option value="">Semua Tahun</option>
+    </select>
+</div>
 
 </div>
 
+
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="/map/js/map.js"></script>
-
+<!-- <script src="/map/js/map.js"></script> -->
+@push('scripts')
+    <script src="/map/js/map.js?v=3"></script>
+@endpush
 </x-filament-panels::page>

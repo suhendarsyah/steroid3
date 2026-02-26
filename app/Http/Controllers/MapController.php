@@ -9,7 +9,8 @@ class MapController extends Controller
 {
     public function data(Request $request)
     {
-        $kode = $request->query('kode');
+        $kode  = $request->query('kode');
+        $tahun = $request->query('tahun'); // 🔥 filter tahun
 
         /*
         |--------------------------------------------------------------------------
@@ -28,7 +29,6 @@ class MapController extends Controller
         |--------------------------------------------------------------------------
         | MAPPING NAMA KECAMATAN → ID DATABASE
         |--------------------------------------------------------------------------
-        | Ini solusi aman supaya GeoJSON tidak konflik lagi
         */
         $kecamatanId = DB::table('kecamatans')
             ->where('nama', $kode)
@@ -44,7 +44,7 @@ class MapController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | DATA WILAYAH (UPT WILAYAH + STATISTIK)
+        | DATA WILAYAH (UPT WILAYAH + STATISTIK) + FILTER TAHUN
         |--------------------------------------------------------------------------
         */
         $wilayah = DB::table('kecamatans')
@@ -55,8 +55,23 @@ class MapController extends Controller
             ->leftJoin('objek_produksis','objek_produksis.unit_layanan_id','=','unit_layanans.id')
             ->leftJoin('pemiliks','pemiliks.id','=','objek_produksis.pemilik_id')
 
-            ->where('kecamatans.id',$kecamatanId)
+            // 🔥 join data_teknis untuk filter tahun (tanpa merusak relasi)
+            // ->leftJoin('data_teknis','data_teknis.objek_produksi_id','=','objek_produksis.id')
+            ->leftJoin('data_teknis', function($join) use ($tahun) {
+
+                $join->on('data_teknis.objek_produksi_id','=','objek_produksis.id');
+
+                if($tahun){
+                    $join->whereYear('data_teknis.tanggal',$tahun);
+                }
+
+            })
+                        ->where('kecamatans.id',$kecamatanId)
             ->where('upts.jenis_upt','wilayah')
+
+            ->when($tahun, function($q) use ($tahun){
+                $q->whereYear('data_teknis.tanggal', $tahun);
+            })
 
             ->select(
                 'kecamatans.nama as kecamatan',
@@ -69,7 +84,7 @@ class MapController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | POTENSI KOMODITAS (AGREGAT PER SATUAN)
+        | POTENSI KOMODITAS (AGREGAT PER SATUAN) + FILTER TAHUN
         |--------------------------------------------------------------------------
         */
         $komoditas = DB::table('kecamatans')
@@ -79,9 +94,21 @@ class MapController extends Controller
             ->join('objek_produksis','objek_produksis.unit_layanan_id','=','unit_layanans.id')
             ->join('komoditas','komoditas.id','=','objek_produksis.komoditas_id')
 
-            ->leftJoin('data_teknis','data_teknis.objek_produksi_id','=','objek_produksis.id')
+            // ->leftJoin('data_teknis','data_teknis.objek_produksi_id','=','objek_produksis.id')
+            ->leftJoin('data_teknis', function($join) use ($tahun){
 
+                $join->on('data_teknis.objek_produksi_id','=','objek_produksis.id');
+
+                if($tahun){
+                    $join->whereYear('data_teknis.tanggal',$tahun);
+                }
+
+            })
             ->where('kecamatans.id',$kecamatanId)
+
+            ->when($tahun, function($q) use ($tahun){
+                $q->whereYear('data_teknis.tanggal', $tahun);
+            })
 
             ->select(
                 'komoditas.nama',
@@ -93,7 +120,7 @@ class MapController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | UPT TEMATIK (JUMLAH OBJEK)
+        | UPT TEMATIK (JUMLAH OBJEK) + FILTER TAHUN
         |--------------------------------------------------------------------------
         */
         $tematik = DB::table('kecamatans')
@@ -103,8 +130,23 @@ class MapController extends Controller
 
             ->leftJoin('objek_produksis','objek_produksis.unit_layanan_id','=','unit_layanans.id')
 
+            // 🔥 filter tahun tetap lewat data_teknis
+            // ->leftJoin('data_teknis','data_teknis.objek_produksi_id','=','objek_produksis.id')
+            ->leftJoin('data_teknis', function($join) use ($tahun){
+
+                $join->on('data_teknis.objek_produksi_id','=','objek_produksis.id');
+
+                if($tahun){
+                    $join->whereYear('data_teknis.tanggal',$tahun);
+                }
+
+            })
             ->where('kecamatans.id',$kecamatanId)
             ->where('upts.jenis_upt','tematis')
+
+            ->when($tahun, function($q) use ($tahun){
+                $q->whereYear('data_teknis.tanggal', $tahun);
+            })
 
             ->select(
                 'upts.nama as upt',
@@ -124,4 +166,80 @@ class MapController extends Controller
             'tematik'   => $tematik,
         ]);
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | LIST TAHUN DINAMIS UNTUK FILTER
+    |--------------------------------------------------------------------------
+    */
+    public function tahunList()
+    {
+        $tahun = DB::table('data_teknis')
+            ->whereNotNull('tanggal')
+            ->selectRaw('YEAR(data_teknis.tanggal) as tahun')
+            ->distinct()
+            ->orderByDesc('tahun')
+            ->pluck('tahun');
+
+        return response()->json($tahun);
+    }
+
+    public function foto(Request $request)
+    {
+        $nama = $request->query('kecamatan');
+
+        if(!$nama){
+            return response()->json([
+                'url' => 'https://upload.wikimedia.org/wikipedia/commons/3/3e/Garut_Regency.jpg'
+            ]);
+        }
+
+        $keyword = urlencode($nama.' Garut');
+
+        $api = "https://commons.wikimedia.org/w/api.php?action=query&format=json&prop=pageimages&piprop=thumbnail&pithumbsize=600&generator=search&gsrsearch={$keyword}&gsrlimit=1";
+
+        $response = @file_get_contents($api);
+
+        if(!$response){
+            return response()->json([
+                'url' => 'https://upload.wikimedia.org/wikipedia/commons/3/3e/Garut_Regency.jpg'
+            ]);
+        }
+
+        $json = json_decode($response,true);
+
+        $pages = $json['query']['pages'] ?? null;
+
+        if(!$pages){
+            // 🔥 FALLBACK FOTO GARUT
+            return response()->json([
+                'url' => 'https://upload.wikimedia.org/wikipedia/commons/3/3e/Garut_Regency.jpg'
+            ]);
+        }
+
+        $first = array_values($pages)[0];
+
+        return response()->json([
+            'url' => $first['thumbnail']['source']
+                ?? 'https://upload.wikimedia.org/wikipedia/commons/3/3e/Garut_Regency.jpg'
+        ]);
+    }
+
+    public function proxyFoto(Request $request)
+{
+    $url = $request->query('url');
+
+    if(!$url){
+        abort(404);
+    }
+
+    $image = @file_get_contents($url);
+
+    if(!$image){
+        abort(404);
+    }
+
+    return response($image)
+        ->header('Content-Type','image/jpeg');
+}
 }

@@ -14,7 +14,7 @@ class UnitLayanansTable
     {
         return $table
             ->columns([
-                TextColumn::make('upt_id')
+                TextColumn::make('upt.nama')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('nama')

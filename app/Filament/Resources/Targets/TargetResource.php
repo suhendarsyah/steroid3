@@ -7,6 +7,7 @@ use App\Filament\Resources\Targets\Pages\EditTarget;
 use App\Filament\Resources\Targets\Pages\ListTargets;
 use App\Filament\Resources\Targets\Schemas\TargetForm;
 use App\Filament\Resources\Targets\Tables\TargetsTable;
+
 use App\Models\Target;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -14,6 +15,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class TargetResource extends Resource
 {
@@ -52,6 +54,10 @@ class TargetResource extends Resource
     {
         $query = parent::getEloquentQuery();
         $user  = auth()->user();
+
+        if (!$user) {
+            return $query->whereRaw('1 = 0');
+        }
 
         // 🔓 ROLE STRATEGIS → LIHAT SEMUA DATA
         if ($user->hasAnyRole([
@@ -109,29 +115,47 @@ class TargetResource extends Resource
             'kepala_dinas',
             'super_admin',
             'kepala_bidang',
-        ])?? false;
+        ]) ?? false;
     }
 
     // 🔹 SIAPA BOLEH CREATE
     public static function canCreate(): bool
     {
-        return auth()->user()?->hasRole('perencanaan')?? false;
+        $user = auth()->user();
+
+        return $user
+            && $user->hasAnyRole([
+                'kepala_bidang',
+                'super_admin',
+                'perencanaan',
+            ]);
     }
 
     // 🔹 SIAPA BOLEH EDIT
-    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->hasRole('perencanaan')?? false;
-    }
+        $user = auth()->user();
 
-    // 🔹 DELETE DIMATIKAN
-    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
-    {
+        if (!$user) {
+            return false;
+        }
+
+        // super_admin & perencanaan boleh edit semua
+        if ($user->hasAnyRole(['super_admin','perencanaan','kepala_bidang'])) {
+            return true;
+        }
+
+        // kepala_bidang hanya boleh edit miliknya
+        if ($user->hasRole('kepala_bidang')) {
+            return $record->master_bidang_id === $user->bidang_id;
+        }
+
         return false;
     }
 
-
-    // untuk menghilangkan tombol new target
-    
-
+    // 🔹 DELETE DIMATIKAN
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
 }

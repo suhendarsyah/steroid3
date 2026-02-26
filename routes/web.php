@@ -46,6 +46,10 @@ Route::get('/test-service-produksi-upt/{tahun}', function ($tahun) {
 
 Route::get('/admin/map-data', [MapController::class, 'data']);
 
+Route::get('/admin/map-foto', [MapController::class,'foto']);
+Route::get('/admin/map-tahun', [MapController::class, 'tahunList']);
+Route::get('/map-foto-proxy',[MapController::class,'proxyFoto']);
+
 // Route::get('/admin/map-data', function (Request $request) {
 
 //     $kode = $request->query('kode');

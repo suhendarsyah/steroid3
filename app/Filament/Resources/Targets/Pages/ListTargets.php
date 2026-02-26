@@ -14,7 +14,7 @@ class ListTargets extends ListRecords
     {
         return [
             CreateAction::make()
-            ->visible(fn () => auth()->user()->hasRole(['perencanaan','super_admin'])),
+            ->visible(fn () => auth()->user()->hasRole(['perencanaan','super_admin','kepala_bidang'])),
         ];
     }
 }
