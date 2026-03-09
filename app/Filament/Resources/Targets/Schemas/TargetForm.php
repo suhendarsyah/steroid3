@@ -42,42 +42,32 @@ class TargetForm
                 | KOMODITAS (FILTER SESUAI BIDANG)
                 |--------------------------------------------------------------------------
                 */
-                Select::make('komoditas_id')
+                
+        Select::make('komoditas_id')
+                ->relationship(
+                    name: 'komoditas',
+                    titleAttribute: 'nama'
+                )
+
+                // ⭐ INI YANG MEMPERBAIKI ANGKA 6
+                ->getOptionLabelFromRecordUsing(fn ($record) => $record->nama)
 
                 ->label(function () {
 
                     $bidang = strtolower(auth()->user()->bidang->nama ?? '');
 
-                    if (str_contains($bidang, 'kesehatan')) {
-                        return 'Objek Pelayanan';
-                    }
-
-                    if (str_contains($bidang, 'peternakan')) {
-                        return 'Komoditas Ternak';
-                    }
-
-                    if (str_contains($bidang, 'perikanan')) {
-                        return 'Komoditas Perikanan';
-                    }
+                    if (str_contains($bidang,'kesehatan')) return 'Objek Pelayanan';
+                    if (str_contains($bidang,'peternakan')) return 'Komoditas Ternak';
+                    if (str_contains($bidang,'perikanan')) return 'Komoditas Perikanan';
 
                     return 'Objek Teknis';
                 })
 
-                ->relationship(
-                    name: 'komoditas',
-                    titleAttribute: 'nama',
-                    modifyQueryUsing: function ($query, $get) {
-
-                        $bidangId = $get('master_bidang_id')
-                            ?? auth()->user()->bidang_id;
-
-                        if ($bidangId) {
-                            $query->where('master_bidang_id', $bidangId);
-                        }
-                    }
-                )
-
-    /*
+                ->preload()
+                ->searchable()
+                ->required()
+                ->live()
+                /*
     |--------------------------------------------------------------------------
     | 🔥 FIX LABEL EDIT MODE (INI YANG MEMPERBAIKI MASALAH ANDA)
     |--------------------------------------------------------------------------
